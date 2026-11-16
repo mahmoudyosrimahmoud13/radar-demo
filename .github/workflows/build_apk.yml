@@ -52,6 +52,31 @@ jobs:
             flutter create --platforms=android --org com.mahmoud.radar .
           fi
 
+      - name: Enable core library desugaring (flutter_local_notifications requires it)
+        # Idempotent, and handles both Gradle file formats since recent
+        # `flutter create` templates default to Kotlin DSL (build.gradle.kts)
+        # instead of the older Groovy build.gradle. Appending a second
+        # "android {}"/"dependencies {}" block is valid in both formats --
+        # Gradle merges repeated blocks rather than requiring one edit in
+        # place, so this never has to parse/modify the generated file.
+        run: |
+          GRADLE_FILE=""
+          if [ -f android/app/build.gradle.kts ]; then
+            GRADLE_FILE=android/app/build.gradle.kts
+          elif [ -f android/app/build.gradle ]; then
+            GRADLE_FILE=android/app/build.gradle
+          fi
+          if [ -n "$GRADLE_FILE" ] && ! grep -q "coreLibraryDesugaring" "$GRADLE_FILE"; then
+            if [[ "$GRADLE_FILE" == *.kts ]]; then
+              SNIPPET_B64="CmFuZHJvaWQgewogICAgY29tcGlsZU9wdGlvbnMgewogICAgICAgIGlzQ29yZUxpYnJhcnlEZXN1Z2FyaW5nRW5hYmxlZCA9IHRydWUKICAgIH0KfQoKZGVwZW5kZW5jaWVzIHsKICAgIGNvcmVMaWJyYXJ5RGVzdWdhcmluZygiY29tLmFuZHJvaWQudG9vbHM6ZGVzdWdhcl9qZGtfbGliczoyLjEuNCIpCn0K"
+            else
+              SNIPPET_B64="CmFuZHJvaWQgewogICAgY29tcGlsZU9wdGlvbnMgewogICAgICAgIGNvcmVMaWJyYXJ5RGVzdWdhcmluZ0VuYWJsZWQgdHJ1ZQogICAgfQp9CgpkZXBlbmRlbmNpZXMgewogICAgY29yZUxpYnJhcnlEZXN1Z2FyaW5nICdjb20uYW5kcm9pZC50b29sczpkZXN1Z2FyX2pka19saWJzOjIuMS40Jwp9Cg=="
+            fi
+            echo "$SNIPPET_B64" | base64 -d >> "$GRADLE_FILE"
+            echo "Patched $GRADLE_FILE for core library desugaring"
+          fi
+          [ -n "$GRADLE_FILE" ] && cat "$GRADLE_FILE"
+
       - name: Make sure the Bluetooth/notification permissions are in the manifest
         # Idempotent: only adds a line if it's not already there, so this is
         # harmless whether android/ was just generated above or committed
