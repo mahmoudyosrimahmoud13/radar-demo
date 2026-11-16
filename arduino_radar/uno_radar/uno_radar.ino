@@ -20,10 +20,17 @@
           -> updates settings, saves to EEPROM, replies "CFG_OK"
       WIFI,<ssid>,<password>
           -> forwarded as-is to the ESP-01 over SoftwareSerial, which
-             tries to join that network; replies "WIFI_FORWARDED"
-             (the ESP-01 itself reports success/failure asynchronously
-             on the same data line fed back to the app — see the
-             ESP-01 sketch)
+             tries to join that network; Uno immediately replies
+             "WIFI_FORWARDED" just to confirm it relayed the command.
+             The ESP-01 then reports the real outcome a moment later
+             (and again every ~5s afterwards, so it's never silent even
+             if the app connects after the ESP-01 already joined WiFi
+             on its own) as its own line, which the Uno relays as-is:
+      NETSTATUS,<STA|AP>,<ip>,<ssid>
+          -> relayed straight through from the ESP-01: STA means it
+             joined your WiFi (ip is its DHCP address on your network);
+             AP means it fell back to its own "RadarESP" hotspot
+             (ip is always 192.168.4.1)
       ENTERUPDATE
           -> replies "RESETTING", then pulses the auto-reset pin to
              drop into the bootloader so the phone app can flash new
@@ -164,6 +171,7 @@ SoftwareSerial espSerial(ESP_RX_PIN, ESP_TX_PIN);
 int angle;
 int step_;
 String btLineBuffer = "";
+String espLineBuffer = "";
 
 void loadConfig() {
   if (EEPROM.read(EEPROM_MAGIC_ADDR) == EEPROM_MAGIC_VAL) {
@@ -329,8 +337,26 @@ void pollBluetoothCommands() {
   }
 }
 
+// Anything the ESP-01 sends back (currently just its "NETSTATUS,..." line)
+// gets relayed straight to the HC-05 so the phone app sees it too.
+void pollEspMessages() {
+  while (espSerial.available()) {
+    char c = espSerial.read();
+    if (c == '\n') {
+      if (espLineBuffer.startsWith("NETSTATUS,")) {
+        Serial.println(espLineBuffer); // -> HC-05 -> phone app
+      }
+      espLineBuffer = "";
+    } else if (c != '\r') {
+      espLineBuffer += c;
+      if (espLineBuffer.length() > 80) espLineBuffer = ""; // guard against junk
+    }
+  }
+}
+
 void loop() {
   pollBluetoothCommands();
+  pollEspMessages();
 
   radarServo.write(angle);
   delay(25);

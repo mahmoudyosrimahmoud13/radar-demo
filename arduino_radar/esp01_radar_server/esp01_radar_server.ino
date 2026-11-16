@@ -180,6 +180,16 @@ void parseRadarLine(String line) {
   lastAlert    = line.substring(lastComma + 1) == "ALERT";
 }
 
+void reportStatus() {
+  // Tells the Uno (which relays it over Bluetooth to the phone app) what
+  // network we're on and what IP to reach the web radar page at, e.g.:
+  //   NETSTATUS,STA,192.168.1.42,HomeWiFi
+  //   NETSTATUS,AP,192.168.4.1,RadarESP
+  String ip   = staMode ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+  String ssid = staMode ? WiFi.SSID() : String(AP_SSID);
+  Serial.println("NETSTATUS," + String(staMode ? "STA" : "AP") + "," + ip + "," + ssid);
+}
+
 void parseWifiLine(String line) {
   // WIFI,<ssid>,<password>
   int c1 = line.indexOf(',');
@@ -193,6 +203,7 @@ void parseWifiLine(String line) {
   } else {
     startAPFallback();
   }
+  reportStatus();
 }
 
 void handleSerialLine(String line) {
@@ -215,7 +226,13 @@ void setup() {
   server.on("/data", handleData);
   server.on("/status", handleStatus);
   server.begin();
+
+  reportStatus(); // so the Uno/app learn the IP even if we connected
+                   // using creds saved from a previous session
 }
+
+const unsigned long STATUS_REPORT_INTERVAL_MS = 5000;
+unsigned long lastStatusReportAt = 0;
 
 void loop() {
   server.handleClient();
@@ -228,6 +245,15 @@ void loop() {
     } else if (c != '\r') {
       serialBuffer += c;
     }
+  }
+
+  // Keep re-announcing our status periodically. This matters because the
+  // phone might connect over Bluetooth well after the ESP-01 already
+  // joined WiFi on its own (using saved credentials) -- without a repeat
+  // announcement, the app would never learn the IP in that case.
+  if (millis() - lastStatusReportAt > STATUS_REPORT_INTERVAL_MS) {
+    reportStatus();
+    lastStatusReportAt = millis();
   }
 }
 

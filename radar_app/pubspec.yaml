@@ -17,6 +17,7 @@ dependencies:
   file_picker: ^8.1.2                # pick a .hex file for OTA flashing
   intl: ^0.19.0
   permission_handler: ^11.3.1        # runtime Bluetooth/location permissions on Android
+  url_launcher: ^6.3.1                # opens the ESP-01's web radar page in a browser
 
 dev_dependencies:
   flutter_test:
