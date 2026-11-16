@@ -90,12 +90,14 @@ jobs:
             "android.permission.BLUETOOTH_SCAN" \
             "android.permission.ACCESS_FINE_LOCATION" \
             "android.permission.POST_NOTIFICATIONS"; do
-            if ! grep -q "$PERM" "$MANIFEST"; then
-              sed -i "s#<manifest #<manifest xmlns:tools=\"http://schemas.android.com/tools\" #" "$MANIFEST" 2>/dev/null || true
-              sed -i "0,/<manifest[^>]*>/s##&\n    <uses-permission android:name=\"$PERM\" />#" "$MANIFEST"
+            if ! grep -q "\"$PERM\"" "$MANIFEST"; then
+              sed -i "0,/<application/s//<uses-permission android:name=\"$PERM\" \/>\n    <application/" "$MANIFEST"
             fi
           done
           cat "$MANIFEST"
+          # Fail right here with a clear error if the manifest isn't valid XML,
+          # instead of 3 minutes later deep inside Gradle.
+          python3 -c "import xml.dom.minidom,sys; xml.dom.minidom.parse(sys.argv[1]); print('Manifest is valid XML')" "$MANIFEST"
 
       - name: Install dependencies
         run: flutter pub get

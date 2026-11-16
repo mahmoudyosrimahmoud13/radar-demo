@@ -68,9 +68,16 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
     final net = _network;
     if (net == null) return;
     final uri = Uri.parse(net.webUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
+    // Call launchUrl directly: canLaunchUrl() returns false on Android 11+
+    // for web links unless the manifest declares <queries>, even when a
+    // browser is installed and launching would work fine.
+    bool opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
       setState(() => _status = "Couldn't open ${net.webUrl} -- if you're on "
           "the RadarESP hotspot, make sure your phone's WiFi is joined to "
           "it first (Bluetooth alone won't reach that page).");
