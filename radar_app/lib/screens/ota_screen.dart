@@ -68,12 +68,10 @@ class _OtaScreenState extends State<OtaScreen> {
 
   Future<void> _startFlash() async {
     if (_hexContents == null) return;
-    if (widget.bluetooth.isDemo || widget.bluetooth.isWifi) {
+    if (widget.bluetooth.isDemo) {
       setState(() {
         _state = _OtaState.error;
-        _statusMessage = widget.bluetooth.isDemo
-            ? 'Demo mode: firmware updates need the real Arduino. Connect to your HC-05 to use this.'
-            : 'Firmware updates only work over Bluetooth. Disconnect and connect to your HC-05 to use this.';
+        _statusMessage = 'Demo mode: firmware updates need the real Arduino. Connect to your HC-05 to use this.';
       });
       return;
     }

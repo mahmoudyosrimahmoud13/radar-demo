@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
+import '../services/radar_settings.dart';
 import '../theme/clay_theme.dart';
 import '../widgets/clay_container.dart';
 
@@ -27,16 +28,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cmd = 'CFG,${_alertDistance.round()},${_sweepMin.round()},${_sweepMax.round()},'
         '${_step.round()},${_buzzerOn ? 1 : 0},${_relayOn ? 1 : 0}';
     widget.bluetooth.sendLine(cmd);
+    RadarSettings(
+      alertCm: _alertDistance.round(),
+      sweepMin: _sweepMin.round(),
+      sweepMax: _sweepMax.round(),
+      step: _step.round(),
+      buzzer: _buzzerOn,
+      relay: _relayOn,
+    ).save();
     setState(() => _ack = 'Sent. Waiting for CFG_OK...');
   }
 
   @override
   void initState() {
     super.initState();
+    RadarSettings.load().then((r) {
+      if (!mounted) return;
+      setState(() {
+        _alertDistance = r.alertCm.toDouble().clamp(5.0, 100.0).toDouble();
+        _sweepMin = r.sweepMin.toDouble().clamp(0.0, 90.0).toDouble();
+        _sweepMax = r.sweepMax.toDouble().clamp(90.0, 180.0).toDouble();
+        _step = r.step.toDouble().clamp(1.0, 10.0).toDouble();
+        _buzzerOn = r.buzzer;
+        _relayOn = r.relay;
+      });
+    });
     widget.bluetooth.lines.listen((line) {
       if (line == 'CFG_OK' && mounted) setState(() => _ack = 'Saved on the Arduino.');
       if (line == 'CFG_ERR' && mounted) setState(() => _ack = 'The Arduino rejected that -- try again.');
     });
+  }
+
+  Widget _preset(IconData icon, String title, String sub, int alert, int min, int max, int step, bool buzzer, bool relay) {
+    return Padding(
+      padding: EdgeInsets.only(right: 12),
+      child: SizedBox(
+        width: 120,
+        child: ClayContainer(
+          padding: EdgeInsets.all(12),
+          onTap: () {
+            setState(() {
+              _alertDistance = alert.toDouble();
+              _sweepMin = min.toDouble();
+              _sweepMax = max.toDouble();
+              _step = step.toDouble();
+              _buzzerOn = buzzer;
+              _relayOn = relay;
+            });
+            _send();
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: ClayColors.primary),
+              SizedBox(height: 6),
+              Text(title, style: TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 13)),
+              Text(sub, style: TextStyle(color: ClayColors.textSecondary, fontSize: 11)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -44,6 +96,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       padding: EdgeInsets.all(20),
       children: [
+        Text('Quick presets', style: TextStyle(fontWeight: FontWeight.w800, color: ClayColors.textPrimary)),
+        SizedBox(height: 10),
+        SizedBox(
+          height: 92,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _preset(Icons.panorama_wide_angle, 'Whole room', 'Wide, calm', 40, 15, 165, 3, false, true),
+              _preset(Icons.door_front_door_outlined, 'Doorway', 'Narrow, fast', 60, 60, 120, 2, true, true),
+              _preset(Icons.desk_outlined, 'Desk guard', 'Close range', 25, 30, 150, 3, true, false),
+              _preset(Icons.nightlight_outlined, 'Night watch', 'Silent, relay on', 80, 15, 165, 4, false, true),
+            ],
+          ),
+        ),
+        SizedBox(height: 20),
         ClayContainer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,7 +13,7 @@ class RadarReading {
   });
 
   /// Returns null if the line isn't a valid radar reading (could be an
-  /// ack like "CFG_OK" or "WIFI_FORWARDED" instead).
+  /// ack like "CFG_OK" instead).
   static RadarReading? parse(String line) {
     final aPos = line.indexOf('A,');
     final dPos = line.indexOf(',D,');

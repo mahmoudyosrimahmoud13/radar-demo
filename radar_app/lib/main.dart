@@ -6,6 +6,7 @@ import 'screens/assembly_guide_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/home_shell.dart';
 import 'widgets/app_logo.dart';
+import 'widgets/splash_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,7 @@ class _RootRouterState extends State<_RootRouter> {
   }
 
   Future<void> _loadGuideFlag() async {
+    final minSplash = Future<void>.delayed(Duration(milliseconds: 1600)); // let the intro play
     bool seen = false;
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -64,6 +66,7 @@ class _RootRouterState extends State<_RootRouter> {
     } catch (_) {
       seen = false;
     }
+    await minSplash;
     if (mounted) setState(() => _guideSeen = seen);
   }
 
@@ -90,7 +93,7 @@ class _RootRouterState extends State<_RootRouter> {
   @override
   Widget build(BuildContext context) {
     if (_guideSeen == null) {
-      return Scaffold(body: Center(child: AppLogo(size: 120)));
+      return SplashView();
     }
     if (_guideSeen == false) {
       return AssemblyGuideScreen(onDone: _finishGuide);

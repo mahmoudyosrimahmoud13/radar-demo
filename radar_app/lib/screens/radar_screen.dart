@@ -6,6 +6,7 @@ import '../services/bluetooth_service.dart';
 import '../theme/clay_theme.dart';
 import '../widgets/clay_container.dart';
 import 'room_map_screen.dart';
+import 'radar_lab_screen.dart';
 
 /// One echo the sensor saw, kept for a few seconds so it can fade out.
 class _Blip {
@@ -75,7 +76,24 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
     return ListView(
       padding: EdgeInsets.all(20),
       children: [
-        ClayContainer(
+        AnimatedBuilder(
+          animation: _ticker,
+          builder: (context, child) => Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: alert
+                  ? [
+                      BoxShadow(
+                        color: ClayColors.danger.withOpacity(0.25 + 0.35 * math.sin(_ticker.value * math.pi)),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                      )
+                    ]
+                  : [],
+            ),
+            child: child,
+          ),
+          child: ClayContainer(
           padding: EdgeInsets.all(10),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -100,11 +118,18 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
             ),
           ),
         ),
+        ),
         SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.circle, size: 10, color: _live ? ClayColors.success : ClayColors.textSecondary),
+            AnimatedBuilder(
+              animation: _ticker,
+              builder: (_, __) => Opacity(
+                opacity: _live ? 0.35 + 0.65 * math.sin(_ticker.value * math.pi) : 1,
+                child: Icon(Icons.circle, size: 10, color: _live ? ClayColors.success : ClayColors.textSecondary),
+              ),
+            ),
             SizedBox(width: 6),
             Text(
               _live ? 'LIVE' : 'Waiting for the radar...',
@@ -117,20 +142,40 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
           ],
         ),
         SizedBox(height: 14),
-        ClayContainer(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => RoomMapScreen(bluetooth: widget.bluetooth),
-          )),
-          child: Row(
-            children: [
-              Icon(Icons.map_outlined, color: ClayColors.primary),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Map this room', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
+        Row(
+          children: [
+            Expanded(
+              child: ClayContainer(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => RoomMapScreen(bluetooth: widget.bluetooth),
+                )),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map_outlined, color: ClayColors.primary),
+                    SizedBox(width: 8),
+                    Text('Map room', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
+                  ],
+                ),
               ),
-              Icon(Icons.chevron_right, color: ClayColors.textSecondary),
-            ],
-          ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: ClayContainer(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => RadarLabScreen(bluetooth: widget.bluetooth),
+                )),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.science_outlined, color: ClayColors.primary),
+                    SizedBox(width: 8),
+                    Text('Radar Lab', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         SizedBox(height: 14),
         Row(
@@ -281,6 +326,14 @@ class _ScopePainter extends CustomPainter {
       final p = _point(c, maxR * b.distanceCm / maxRangeCm, b.angle);
       final color = b.alert ? _red : _green;
       canvas.drawCircle(p, 9 * life + 2, Paint()..color = color.withOpacity(0.18 * life));
+      if (age < 700) {
+        // ping ripple: a ring that expands and fades when a new echo lands
+        final t = age / 700;
+        canvas.drawCircle(p, 4 + 22 * t, Paint()
+          ..color = color.withOpacity(0.8 * (1 - t))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+      }
       canvas.drawCircle(p, 3.5, Paint()..color = color.withOpacity(0.25 + 0.75 * life));
     }
 

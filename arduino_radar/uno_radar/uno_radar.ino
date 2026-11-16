@@ -307,6 +307,7 @@ void handleCommand(String line) {
       cfg.sweepStep       = max(1, vals[3]);
       cfg.buzzerEnabled   = vals[4] != 0;
       cfg.relayEnabled    = vals[5] != 0;
+      step_ = (step_ < 0 ? -1 : 1) * cfg.sweepStep;  // apply the new step size right away
       saveConfig();
       Serial.println("CFG_OK");
     } else {
@@ -383,6 +384,11 @@ void loop() {
     Serial.println("BATT," + String(readBatteryVoltage(), 2));
   }
 
-  angle += step_;
-  if (angle >= cfg.sweepMax || angle <= cfg.sweepMin) step_ = -step_;
+  if (cfg.sweepMin >= cfg.sweepMax) {
+    angle = cfg.sweepMin;  // "hold" mode: the app's tape measure parks the sensor here
+  } else {
+    angle += step_;
+    if (angle >= cfg.sweepMax || angle <= cfg.sweepMin) step_ = -step_;
+    angle = constrain(angle, cfg.sweepMin, cfg.sweepMax);  // stay inside a newly narrowed range
+  }
 }

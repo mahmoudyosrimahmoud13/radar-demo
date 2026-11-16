@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/battery_reading.dart';
-import '../models/network_status.dart';
 import '../services/bluetooth_service.dart';
 import '../services/presence_controller.dart';
 import '../theme/clay_theme.dart';
@@ -10,7 +8,7 @@ import 'radar_screen.dart';
 import 'events_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
-import 'wifi_setup_screen.dart';
+import 'web_share_screen.dart';
 import 'ota_screen.dart';
 
 /// Bottom-nav shell shown once Bluetooth is connected.
@@ -29,7 +27,7 @@ class _HomeShellState extends State<HomeShell> {
   bool _connected = true;
   BatteryReading? _battery;
 
-  static const _titles = ['Live radar', 'Events', 'Analytics', 'Settings', 'WiFi setup', 'Firmware update'];
+  static const _titles = ['Live radar', 'Events', 'Analytics', 'Settings', 'Web share', 'Firmware update'];
 
   @override
   void initState() {
@@ -41,11 +39,7 @@ class _HomeShellState extends State<HomeShell> {
     widget.bluetooth.lines.listen((line) {
       final battery = BatteryReading.parse(line);
       if (battery != null && mounted) setState(() => _battery = battery);
-      // Remember the ESP-01's address so "Connect over WiFi" can prefill it.
-      final net = NetworkStatus.parse(line);
-      if (net != null) {
-        SharedPreferences.getInstance().then((p) => p.setString('last_esp_ip', net.ip)).catchError((_) => true);
-      }
+
     });
   }
 
@@ -62,16 +56,16 @@ class _HomeShellState extends State<HomeShell> {
       EventsScreen(presence: _presence),
       AnalyticsScreen(presence: _presence),
       SettingsScreen(bluetooth: widget.bluetooth),
-      WifiSetupScreen(bluetooth: widget.bluetooth),
+      WebShareScreen(bluetooth: widget.bluetooth),
       OtaScreen(bluetooth: widget.bluetooth),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
-        leading: (widget.bluetooth.isDemo || widget.bluetooth.isWifi)
+        leading: widget.bluetooth.isDemo
             ? IconButton(
-                tooltip: widget.bluetooth.isDemo ? 'Exit demo' : 'Disconnect',
+                tooltip: 'Exit demo',
                 icon: Icon(Icons.logout),
                 onPressed: () => widget.bluetooth.disconnect(),
               )
@@ -123,7 +117,7 @@ class _HomeShellState extends State<HomeShell> {
             padding: EdgeInsets.only(right: 16),
             child: Center(
               child: ClayBadge(
-                icon: !_connected ? Icons.bluetooth_disabled : (widget.bluetooth.isWifi ? Icons.wifi : Icons.bluetooth_connected),
+                icon: _connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
                 iconColor: _connected ? ClayColors.success : ClayColors.danger,
                 size: 36,
               ),
@@ -131,7 +125,19 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: pages[_index],
+      body: AnimatedSwitcher(
+        duration: Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, anim) => FadeTransition(
+          opacity: anim,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: Offset(0.03, 0), end: Offset.zero).animate(anim),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(key: ValueKey(_index), child: pages[_index]),
+      ),
       bottomNavigationBar: Container(
         padding: EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(color: ClayColors.background),
@@ -144,7 +150,7 @@ class _HomeShellState extends State<HomeShell> {
             NavigationDestination(icon: Icon(Icons.event_note), label: 'Events'),
             NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Analytics'),
             NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
-            NavigationDestination(icon: Icon(Icons.wifi), label: 'WiFi'),
+            NavigationDestination(icon: Icon(Icons.cast_connected), label: 'Share'),
             NavigationDestination(icon: Icon(Icons.memory), label: 'Firmware'),
           ],
         ),

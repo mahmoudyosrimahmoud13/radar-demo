@@ -5,8 +5,8 @@ import '../models/radar_reading.dart';
 import 'bluetooth_service.dart';
 
 /// Serves the live radar web page from the PHONE, so any browser on the
-/// same WiFi can watch the radar without the ESP-01. Same page and same
-/// /data and /status endpoints as the ESP-01 sketch.
+/// same WiFi can watch the radar. The radar talks to the phone over
+/// Bluetooth (HC-05); the phone relays the readings to the page.
 ///
 /// Runs while the app is open (Android pauses it when the app is in the
 /// background for a long time).

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/clay_theme.dart';
 import 'clay_container.dart';
 
-/// Module ids used for highlighting: 'display', 'esp', 'servo', 'buzzer',
+/// Module ids used for highlighting: 'display', 'servo', 'buzzer',
 /// 'sonar', 'relay', 'hc05', 'resetcap', 'power'.
 class _Pin {
   final String name; // label on the module
@@ -27,9 +27,6 @@ const _modules = <_Module>[
     _Pin('a', 'D2'), _Pin('b', 'D3'), _Pin('c', 'D12'), _Pin('d', 'D13'),
     _Pin('e', 'A0'), _Pin('f', 'A1'), _Pin('g', 'A2'), _Pin('COM', 'GND'),
   ]),
-  _Module('esp', 'ESP-01', 'WiFi, 3.3V only', Rect.fromLTWH(195, 40, 140, 120), Color(0xFF4FC3F7), [
-    _Pin('TX', 'D10'), _Pin('RX', 'D11', '1k/2k divider'), _Pin('VCC', '3.3V'), _Pin('EN', '3.3V'), _Pin('GND', 'GND'),
-  ]),
   _Module('servo', 'Servo', 'SG90', Rect.fromLTWH(350, 40, 95, 120), Color(0xFFAB47BC), [
     _Pin('SIG', 'D9'), _Pin('+', '5V'), _Pin('−', 'GND'),
   ]),
@@ -42,8 +39,8 @@ const _modules = <_Module>[
   _Module('relay', 'Relay', 'module', Rect.fromLTWH(695, 40, 100, 120), Color(0xFF8D6E63), [
     _Pin('IN', 'D5'), _Pin('VCC', '5V'), _Pin('GND', 'GND'),
   ]),
-  _Module('hc05', 'HC-05', 'Bluetooth, 3.3V only', Rect.fromLTWH(810, 40, 180, 120), Color(0xFF5C6BC0), [
-    _Pin('TXD', 'D0'), _Pin('RXD', 'D1', '1k/2k divider'), _Pin('VCC', '3.3V'), _Pin('GND', 'GND'), _Pin('KEY', 'NC'),
+  _Module('hc05', 'HC-05', 'Bluetooth, 6-pin board', Rect.fromLTWH(810, 40, 180, 120), Color(0xFF5C6BC0), [
+    _Pin('TXD', 'D0'), _Pin('RXD', 'D1', '1k/2k divider'), _Pin('VCC', '5V'), _Pin('GND', 'GND'), _Pin('EN', 'NC'),
   ]),
 ];
 
@@ -213,8 +210,8 @@ class WiringDiagramPainter extends CustomPainter {
     // power bus legend under the board
     final legendY = _unoRect.bottom + 125;
     final rails = [
-      ['5V', 'Uno 5V pin: servo, HC-SR04, relay'],
-      ['3.3V', 'Uno 3.3V pin: HC-05 (ESP-01 needs its own regulator)'],
+      ['5V', 'Uno 5V pin: servo, HC-SR04, relay, HC-05'],
+      ['3.3V', 'Uno 3.3V pin: HC-05 EN, only during setup'],
       ['GND', 'every GND joins the Uno GND'],
     ];
     for (int i = 0; i < rails.length; i++) {
@@ -302,7 +299,6 @@ class _WiringDiagramScreenState extends State<WiringDiagramScreen> {
     ['servo', 'Servo'],
     ['relay', 'Relay'],
     ['buzzer', 'Buzzer'],
-    ['esp', 'ESP-01'],
     ['display', '7-segment'],
     ['resetcap', 'Auto-reset'],
     ['power', 'Power'],

@@ -72,6 +72,7 @@ bool loadCreds(String& ssid, String& pass) {
 
 bool connectToWiFi(const String& ssid, const String& pass, unsigned long timeoutMs = 15000) {
   WiFi.mode(WIFI_STA);
+  WiFi.setOutputPower(10.0);
   WiFi.begin(ssid.c_str(), pass.c_str());
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
@@ -80,9 +81,19 @@ bool connectToWiFi(const String& ssid, const String& pass, unsigned long timeout
   return WiFi.status() == WL_CONNECTED;
 }
 
+// Hotspot channel. Pick one your home router is NOT on (1, 6 and 11 don't
+// overlap). Change this if your home WiFi drops while the radar is on.
+const int AP_CHANNEL = 11;
+
+// Transmit power in dBm (max 20.5). Lower = less current and less
+// interference. 10 dBm reaches a few metres, plenty for one room, and
+// keeps the current spikes small enough for a weak 3.3V supply.
+const float TX_POWER_DBM = 10.0;
+
 void startAPFallback() {
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID, AP_PASSWORD);
+  WiFi.setOutputPower(TX_POWER_DBM);
+  WiFi.softAP(AP_SSID, AP_PASSWORD, AP_CHANNEL);
   staMode = false;
 }
 
@@ -253,6 +264,7 @@ void handleSerialLine(String line) {
 
 void setup() {
   Serial.begin(9600);
+  WiFi.persistent(false); // don't rewrite WiFi settings to flash on every start
   EEPROM.begin(EEPROM_SIZE);
 
   String ssid, pass;

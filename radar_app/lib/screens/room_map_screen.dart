@@ -62,7 +62,7 @@ class RoomMap {
   }
 }
 
-class _MapStore {
+class RoomMapStore {
   static const _key = 'room_maps';
 
   static Future<List<RoomMap>> load() async {
@@ -113,7 +113,7 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
   @override
   void initState() {
     super.initState();
-    _MapStore.load().then((m) {
+    RoomMapStore.load().then((m) {
       if (mounted) setState(() => _saved = m);
     });
   }
@@ -177,7 +177,7 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
     if (name == null || name.isEmpty) return;
     final named = RoomMap(name, map.createdAt, map.bucketDeg, map.distances);
     final updated = [named, ..._saved];
-    await _MapStore.save(updated);
+    await RoomMapStore.save(updated);
     if (mounted) {
       setState(() {
         _saved = updated;
@@ -188,7 +188,7 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
 
   Future<void> _delete(RoomMap m) async {
     final updated = _saved.where((x) => !identical(x, m)).toList();
-    await _MapStore.save(updated);
+    await RoomMapStore.save(updated);
     if (mounted) setState(() => _saved = updated);
   }
 

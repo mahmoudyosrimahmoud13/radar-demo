@@ -4,7 +4,7 @@ import '../models/presence_event.dart';
 /// Android local notifications for presence events and sensor alerts.
 /// No server/push involved -- these fire straight from the app while the
 /// Bluetooth connection is live (the Arduino has no internet of its own
-/// for this channel; the ESP-01's WiFi page is a separate, pull-based view).
+/// for this channel).
 class RadarNotificationService {
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;

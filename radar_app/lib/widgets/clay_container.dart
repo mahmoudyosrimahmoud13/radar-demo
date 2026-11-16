@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/clay_theme.dart';
 
 /// The core Claymorphism building block: a soft, puffy, rounded surface
@@ -69,7 +70,42 @@ class ClayContainer extends StatelessWidget {
     );
 
     if (onTap == null) return content;
-    return GestureDetector(onTap: onTap, child: content);
+    return _PressScale(onTap: onTap!, child: content);
+  }
+}
+
+/// Gives every tappable clay surface a soft "squish" when pressed, plus a
+/// light haptic tick, so taps feel physical.
+class _PressScale extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+  const _PressScale({required this.onTap, required this.child});
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapCancel: () => setState(() => _down = false),
+      onTapUp: (_) => setState(() => _down = false),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        widget.onTap();
+      },
+      child: AnimatedScale(
+        scale: _down ? 0.95 : 1.0,
+        duration: Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
   }
 }
 

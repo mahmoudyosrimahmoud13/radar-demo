@@ -1,7 +1,6 @@
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/bluetooth_service.dart';
 import '../theme/clay_theme.dart';
 import '../widgets/clay_container.dart';
@@ -37,58 +36,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
       setState(() => _error = 'Could not list paired devices: $e');
     } finally {
       setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _connectWifi() async {
-    String initial = '192.168.4.1';
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      initial = prefs.getString('last_esp_ip') ?? initial;
-    } catch (_) {}
-    if (!mounted) return;
-    final ctrl = TextEditingController(text: initial);
-    final address = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Connect over WiFi'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your phone must be on the same WiFi as the radar. Use the address the WiFi tab '
-              'showed, or 192.168.4.1 if your phone is joined to the RadarESP hotspot.',
-              style: TextStyle(fontSize: 13),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(labelText: 'Radar address'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text('Connect')),
-        ],
-      ),
-    );
-    if (address == null || address.isEmpty) return;
-    setState(() { _loading = true; _error = null; });
-    try {
-      await widget.bluetooth.connectWifi(address);
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_esp_ip', RadarBluetoothService.cleanHost(address));
-      } catch (_) {}
-      widget.onConnected();
-    } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -151,18 +98,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
           ClayContainer(
             onTap: _refresh,
             child: Center(child: Text('Refresh paired devices', style: TextStyle(color: ClayColors.primary))),
-          ),
-          SizedBox(height: 12),
-          ClayContainer(
-            onTap: _connectWifi,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.wifi, color: ClayColors.primary),
-                SizedBox(width: 8),
-                Text('Connect over WiFi (ESP-01)', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
-              ],
-            ),
           ),
           SizedBox(height: 12),
           Row(
