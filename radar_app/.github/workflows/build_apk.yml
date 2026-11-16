@@ -1,0 +1,103 @@
+name: Build Android APK
+
+# Builds the radar companion app:
+#  - on every push/PR to main: a CI check, APK attached as a run artifact
+#  - on pushing a version tag (v1.0.0 etc.), or running this by hand with
+#    "Create a GitHub Release" checked: also publishes a GitHub Release
+#    with the APK attached as a downloadable asset -- a real link you can
+#    hand someone to install it, not something buried in a CI run.
+# No Play Store account or signing key needed for a sideload build like
+# this one (Android will ask the installer to confirm "install from
+# unknown sources" the first time, same as any APK outside the Play Store).
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Also publish a GitHub Release with this build"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # needed to publish a GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Java (required by the Android Gradle build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate the android/ project if it's not committed
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.mahmoud.radar .
+          fi
+
+      - name: Make sure the Bluetooth/notification permissions are in the manifest
+        # Idempotent: only adds a line if it's not already there, so this is
+        # harmless whether android/ was just generated above or committed
+        # to the repo with the permissions already in place.
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          for PERM in \
+            "android.permission.BLUETOOTH" \
+            "android.permission.BLUETOOTH_ADMIN" \
+            "android.permission.BLUETOOTH_CONNECT" \
+            "android.permission.BLUETOOTH_SCAN" \
+            "android.permission.ACCESS_FINE_LOCATION" \
+            "android.permission.POST_NOTIFICATIONS"; do
+            if ! grep -q "$PERM" "$MANIFEST"; then
+              sed -i "s#<manifest #<manifest xmlns:tools=\"http://schemas.android.com/tools\" #" "$MANIFEST" 2>/dev/null || true
+              sed -i "0,/<manifest[^>]*>/s##&\n    <uses-permission android:name=\"$PERM\" />#" "$MANIFEST"
+            fi
+          done
+          cat "$MANIFEST"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (non-blocking -- catches obvious issues without failing the build over lints)
+        run: flutter analyze || true
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK as a run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Rename APK for the release asset (version tag or run number)
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="run-${GITHUB_RUN_NUMBER}"
+          cp build/app/outputs/flutter-apk/app-release.apk "radar-app-${VERSION}.apk"
+          echo "ASSET_PATH=radar-app-${VERSION}.apk" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('Build {0}', github.run_number) }}
+          files: ${{ env.ASSET_PATH }}
+          generate_release_notes: true
