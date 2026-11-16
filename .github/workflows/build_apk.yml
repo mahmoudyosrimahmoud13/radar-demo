@@ -184,3 +184,100 @@ jobs:
           name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('Build {0}', github.run_number) }}
           files: ${{ env.ASSET_PATH }}
           generate_release_notes: true
+
+  # Linux desktop build, packaged as a .deb. Same app and UI, but it talks
+  # to the Uno over its USB cable (/dev/ttyACM0) instead of Bluetooth.
+  # Runs after the Android job (even if that one failed), so the two never
+  # race to create the same GitHub Release.
+  build-linux:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: radar_app
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install the Linux desktop build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate the linux/ project if it's not committed
+        run: |
+          flutter config --enable-linux-desktop
+          if [ ! -d linux ]; then
+            flutter create --platforms=linux --org com.mahmoud.radar .
+          fi
+          # window title shows EchoSweep instead of radar_app
+          sed -i 's/"radar_app"/"EchoSweep"/g' linux/runner/my_application.cc || true
+          grep -n "EchoSweep" linux/runner/my_application.cc || true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (non-blocking)
+        run: flutter analyze || true
+
+      - name: Build the Linux app
+        run: flutter build linux --release
+
+      - name: Package it as a .deb
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9] ]]; then VERSION="0.0.${GITHUB_RUN_NUMBER}"; fi
+          BUNDLE=$(ls -d build/linux/x64/release/bundle)
+          BIN=$(grep -oP 'set\(BINARY_NAME "\K[^"]+' linux/CMakeLists.txt)
+          PKG="echosweep_${VERSION}_amd64"
+          rm -rf "$PKG"
+          mkdir -p "$PKG/DEBIAN" "$PKG/opt/echosweep" "$PKG/usr/bin" "$PKG/usr/share/applications" "$PKG/usr/share/pixmaps"
+          cp -r "$BUNDLE"/. "$PKG/opt/echosweep/"
+          ln -s "/opt/echosweep/$BIN" "$PKG/usr/bin/echosweep"
+          cp branding/logo.png "$PKG/usr/share/pixmaps/echosweep.png"
+          printf '%s\n' \
+            "[Desktop Entry]" \
+            "Name=EchoSweep" \
+            "Comment=Ultrasonic radar over USB" \
+            "Exec=/opt/echosweep/$BIN" \
+            "Icon=echosweep" \
+            "Terminal=false" \
+            "Type=Application" \
+            "Categories=Utility;Development;" \
+            > "$PKG/usr/share/applications/echosweep.desktop"
+          printf '%s\n' \
+            "Package: echosweep" \
+            "Version: ${VERSION}" \
+            "Section: utils" \
+            "Priority: optional" \
+            "Architecture: amd64" \
+            "Depends: libgtk-3-0" \
+            "Recommends: zenity" \
+            "Maintainer: EchoSweep <noreply@example.com>" \
+            "Description: EchoSweep ultrasonic radar (USB serial desktop build)" \
+            " Same app as the Android version, connected to the Arduino Uno over USB." \
+            > "$PKG/DEBIAN/control"
+          dpkg-deb --build --root-owner-group "$PKG"
+          ls -la "$PKG.deb"
+          echo "DEB_PATH=radar_app/$PKG.deb" >> "$GITHUB_ENV"
+
+      - name: Upload .deb as a run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: echosweep-linux-deb
+          path: ${{ env.DEB_PATH }}
+          if-no-files-found: error
+
+      - name: Attach the .deb to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('Build {0}', github.run_number) }}
+          files: ${{ env.DEB_PATH }}

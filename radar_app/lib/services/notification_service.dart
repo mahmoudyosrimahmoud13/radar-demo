@@ -12,7 +12,8 @@ class RadarNotificationService {
   Future<void> init() async {
     if (_initialized) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _plugin.initialize(InitializationSettings(android: androidInit));
+    const linuxInit = LinuxInitializationSettings(defaultActionName: 'Open EchoSweep');
+    await _plugin.initialize(InitializationSettings(android: androidInit, linux: linuxInit));
 
     const channel = AndroidNotificationChannel(
       'radar_presence',
@@ -28,6 +29,20 @@ class RadarNotificationService {
   }
 
   Future<void> notifyPresenceEvent(PresenceEvent event) async {
+    try {
+      await _notifyPresenceEvent(event);
+    } catch (_) {
+      // a notification failing (e.g. no notification daemon on a desktop) must never break the app
+    }
+  }
+
+  Future<void> notifyAlert(String message) async {
+    try {
+      await _notifyAlert(message);
+    } catch (_) {}
+  }
+
+  Future<void> _notifyPresenceEvent(PresenceEvent event) async {
     await init();
     final entered = event.type == PresenceEventType.entered;
     await _plugin.show(
@@ -47,7 +62,7 @@ class RadarNotificationService {
     );
   }
 
-  Future<void> notifyAlert(String message) async {
+  Future<void> _notifyAlert(String message) async {
     await init();
     await _plugin.show(
       3,

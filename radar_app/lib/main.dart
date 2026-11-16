@@ -1,9 +1,11 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'theme/clay_theme.dart';
 import 'services/bluetooth_service.dart';
 import 'screens/assembly_guide_screen.dart';
 import 'screens/connect_screen.dart';
+import 'screens/serial_connect_screen.dart';
 import 'screens/home_shell.dart';
 import 'widgets/app_logo.dart';
 import 'widgets/splash_view.dart';
@@ -118,7 +120,10 @@ class _RootRouterState extends State<_RootRouter> {
             ),
           ],
         ),
-        body: ConnectScreen(bluetooth: _bluetooth, onConnected: () => setState(() => _connected = true)),
+        // Linux desktop build: USB cable only. Android: Bluetooth (HC-05).
+        body: Platform.isLinux
+            ? SerialConnectScreen(bluetooth: _bluetooth, onConnected: () => setState(() => _connected = true))
+            : ConnectScreen(bluetooth: _bluetooth, onConnected: () => setState(() => _connected = true)),
       );
     }
     return HomeShell(bluetooth: _bluetooth, onOpenGuide: _openGuide);

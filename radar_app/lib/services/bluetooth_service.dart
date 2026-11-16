@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -29,7 +30,118 @@ class RadarBluetoothService {
   /// flashing at the same time).
   Stream<Uint8List> get rawBytes => _rawController.stream;
 
-  bool get isConnected => _demo || (_connection?.isConnected ?? false);
+  bool get isConnected => _demo || _serialPath != null || (_connection?.isConnected ?? false);
+
+  // ---------------------------------------------------------------------
+  // USB SERIAL (Linux desktop build): talks to the Uno straight over its
+  // USB cable (/dev/ttyACM0 or /dev/ttyUSB0) at 115200 baud. Uses `stty`
+  // to set the port up, then plain file reads and writes, so no extra
+  // plugin is needed.
+  // ---------------------------------------------------------------------
+  String? _serialPath;
+  StreamSubscription<List<int>>? _serialSub;
+  RandomAccessFile? _serialOut;
+  bool get isSerial => _serialPath != null;
+  String? get serialPath => _serialPath;
+
+  /// Every USB serial port that looks like an Arduino.
+  static Future<List<String>> listSerialPorts() async {
+    final ports = <String>[];
+    try {
+      await for (final e in Directory('/dev').list()) {
+        final name = e.path.split('/').last;
+        if (name.startsWith('ttyACM') || name.startsWith('ttyUSB')) ports.add(e.path);
+      }
+    } catch (_) {}
+    ports.sort();
+    return ports;
+  }
+
+  Future<void> _openSerial(String path) async {
+    final r = await Process.run('stty', ['-F', path, '115200', 'cs8', '-cstopb', '-parenb', 'raw', '-echo', 'min', '1', 'time', '0', '-hupcl']);
+    if (r.exitCode != 0) {
+      final err = '${r.stderr}'.toLowerCase();
+      if (err.contains('permission')) {
+        throw Exception('No permission to open $path. Run: sudo usermod -aG dialout \$USER  then log out and back in.');
+      }
+      if (err.contains('busy')) {
+        throw Exception('$path is busy. Close the Arduino IDE Serial Monitor or any other program using it.');
+      }
+      throw Exception('Could not set up $path: ${'${r.stderr}'.trim()}');
+    }
+    _serialOut = await File(path).open(mode: FileMode.writeOnlyAppend);
+    _serialPath = path;
+    _serialSub = File(path).openRead().listen(
+      (data) => _onBytes(Uint8List.fromList(data)),
+      onDone: () {
+        if (_serialPath == path) {
+          _serialPath = null;
+          _stateController.add(false);
+        }
+      },
+      onError: (_) {
+        if (_serialPath == path) {
+          _serialPath = null;
+          _stateController.add(false);
+        }
+      },
+      cancelOnError: true,
+    );
+  }
+
+  Future<void> _closeSerial() async {
+    final sub = _serialSub;
+    final out = _serialOut;
+    _serialPath = null;
+    _serialSub = null;
+    _serialOut = null;
+    try { await sub?.cancel().timeout(const Duration(seconds: 1)); } catch (_) {}
+    try { await out?.close(); } catch (_) {}
+  }
+
+  /// Connects over USB serial. The Uno resets when the port opens, so we
+  /// wait for it to boot before the app starts sending commands.
+  Future<void> connectSerial(String path) async {
+    await disconnect();
+    try {
+      await _openSerial(path);
+    } catch (e) {
+      await _closeSerial();
+      rethrow;
+    }
+    _stateController.add(true);
+    await Future.delayed(const Duration(milliseconds: 1800));
+  }
+
+  /// Puts the Uno into its bootloader for a firmware update.
+  /// Over USB: close and reopen the port, which pulses DTR and resets the
+  /// board (exactly what the Arduino IDE does). Over Bluetooth: ask the
+  /// firmware to reset itself with ENTERUPDATE.
+  Future<void> requestBootloader() async {
+    final path = _serialPath;
+    if (path != null) {
+      await _closeSerial();
+      await Process.run('stty', ['-F', path, 'hupcl']);
+      await Future.delayed(const Duration(milliseconds: 150));
+      await _openSerial(path);
+      await Future.delayed(const Duration(milliseconds: 250));
+      return;
+    }
+    sendLine('ENTERUPDATE');
+  }
+
+  void _onBytes(Uint8List data) {
+    if (_rawController.isClosed) return;
+    _rawController.add(data);
+    _recvBuffer += utf8.decode(data, allowMalformed: true);
+    while (_recvBuffer.contains('\n')) {
+      final idx = _recvBuffer.indexOf('\n');
+      final line = _recvBuffer.substring(0, idx).trim();
+      _recvBuffer = _recvBuffer.substring(idx + 1);
+      if (line.isNotEmpty) _lineController.add(line);
+    }
+    if (_recvBuffer.length > 4096) _recvBuffer = '';
+  }
 
   // ---------------------------------------------------------------------
   // DEMO MODE: a simulated radar so the whole app can be tried before any
@@ -177,16 +289,7 @@ class RadarBluetoothService {
     _stateController.add(true);
 
     _connection!.input!.listen(
-      (Uint8List data) {
-        _rawController.add(data);
-        _recvBuffer += utf8.decode(data, allowMalformed: true);
-        while (_recvBuffer.contains('\n')) {
-          final idx = _recvBuffer.indexOf('\n');
-          final line = _recvBuffer.substring(0, idx).trim();
-          _recvBuffer = _recvBuffer.substring(idx + 1);
-          if (line.isNotEmpty) _lineController.add(line);
-        }
-      },
+      _onBytes,
       onDone: () => _stateController.add(false),
       onError: (_) => _stateController.add(false),
     );
@@ -194,6 +297,7 @@ class RadarBluetoothService {
 
   Future<void> disconnect() async {
     stopDemo();
+    await _closeSerial();
     await _connection?.finish();
     _connection = null;
     _stateController.add(false);
@@ -220,6 +324,10 @@ class RadarBluetoothService {
       _demoHandleCommand(command);
       return;
     }
+    if (_serialOut != null) {
+      _serialWrite(utf8.encode('$command\n'));
+      return;
+    }
     final conn = _connection;
     if (conn == null || !conn.isConnected) return;
     conn.output.add(utf8.encode('$command\n'));
@@ -228,13 +336,28 @@ class RadarBluetoothService {
   /// Hands raw bytes directly to the output sink, for the OTA flasher
   /// which needs to send raw STK500 binary frames, not text lines.
   void sendRaw(List<int> bytes) {
+    if (_serialOut != null) {
+      _serialWrite(bytes);
+      return;
+    }
     final conn = _connection;
     if (conn == null || !conn.isConnected) return;
     conn.output.add(Uint8List.fromList(bytes));
   }
 
+  void _serialWrite(List<int> bytes) {
+    try {
+      _serialOut?.writeFromSync(bytes);
+      _serialOut?.flushSync();
+    } catch (_) {
+      _closeSerial();
+      _stateController.add(false);
+    }
+  }
+
   void dispose() {
     _demoTimer?.cancel();
+    _closeSerial();
     _lineController.close();
     _stateController.close();
     _rawController.close();

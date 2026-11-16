@@ -39,6 +39,8 @@ class _OtaScreenState extends State<OtaScreen> {
   }
 
   Future<bool> _confirmRisk() async {
+    // Over a USB cable there's no wireless link to drop, so no scary warning.
+    if (widget.bluetooth.isSerial) return true;
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -71,7 +73,7 @@ class _OtaScreenState extends State<OtaScreen> {
     if (widget.bluetooth.isDemo) {
       setState(() {
         _state = _OtaState.error;
-        _statusMessage = 'Demo mode: firmware updates need the real Arduino. Connect to your HC-05 to use this.';
+        _statusMessage = 'Demo mode: firmware updates need the real Arduino. Connect to your radar to use this.';
       });
       return;
     }
@@ -83,10 +85,19 @@ class _OtaScreenState extends State<OtaScreen> {
       _progress = 0;
     });
 
-    widget.bluetooth.sendLine('ENTERUPDATE');
+    try {
+      await widget.bluetooth.requestBootloader();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _state = _OtaState.error;
+        _statusMessage = e.toString();
+      });
+      return;
+    }
     // Give the chip a moment to actually reset before we start syncing --
     // the bootloader only listens for ~1s after reset, so don't wait long.
-    await Future.delayed(Duration(milliseconds: 300));
+    if (!widget.bluetooth.isSerial) await Future.delayed(Duration(milliseconds: 300));
 
     setState(() => _state = _OtaState.flashing);
     final flasher = Stk500Flasher(widget.bluetooth);
@@ -173,7 +184,7 @@ class _OtaScreenState extends State<OtaScreen> {
               color: _hexContents == null ? ClayColors.background : null,
               child: Center(
                 child: Text(
-                  'Flash over Bluetooth',
+                  widget.bluetooth.isSerial ? 'Flash over USB' : 'Flash over Bluetooth',
                   style: TextStyle(
                     color: _hexContents == null ? ClayColors.textSecondary : ClayColors.danger,
                     fontWeight: FontWeight.w700,

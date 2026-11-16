@@ -122,7 +122,7 @@ class _WebShareScreenState extends State<WebShareScreen> {
               Text('How to watch from another device',
                   style: TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700)),
               SizedBox(height: 12),
-              _step('1.', 'Connect this phone to the radar over Bluetooth, and to your home WiFi.'),
+              _step('1.', 'Connect this device to the radar, and to your home WiFi.'),
               _step('2.', 'Turn on the switch above.'),
               _step('3.', 'On a laptop or tablet on the same WiFi, type the address shown above into the browser.'),
               _step('4.', 'Keep this app open while others are watching.'),

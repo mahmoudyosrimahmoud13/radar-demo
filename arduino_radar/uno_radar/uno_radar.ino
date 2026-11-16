@@ -188,6 +188,15 @@ void loadConfig() {
   } else {
     saveConfig(); // first boot: write the defaults
   }
+  // Never trust saved settings blindly: a bad or "parked" sweep range
+  // (min >= max) would leave the servo stuck at one angle, only humming.
+  bool bad = cfg.sweepMin < 0 || cfg.sweepMax > 180 || cfg.sweepMax - cfg.sweepMin < 10 ||
+             cfg.sweepStep < 1 || cfg.sweepStep > 20 ||
+             cfg.alertDistanceCm < 2 || cfg.alertDistanceCm > 400;
+  if (bad) {
+    cfg = Config(); // back to defaults: 15..165 degrees, step 2
+    saveConfig();
+  }
 }
 
 void saveConfig() {
@@ -214,8 +223,19 @@ void setup() {
   for (int i = 0; i < 7; i++) pinMode(SEG_PINS[i], OUTPUT);
   pinMode(BATTERY_SENSE_PIN, INPUT);
 
+  // Start-up self-test: the servo swings to both sides once. If you see
+  // this swing but no sweep afterwards, the problem is settings; if you
+  // see no swing at all, it is the servo's power, ground or signal wire.
+  radarServo.write(30);  delay(500);
+  radarServo.write(150); delay(700);
+  radarServo.write(90);  delay(400);
+
   angle = cfg.sweepMin;
   step_ = cfg.sweepStep;
+
+  Serial.println("BOOT");  // seeing this repeat means the Uno keeps restarting (power problem)
+  Serial.println("CFGNOW," + String(cfg.alertDistanceCm) + "," + String(cfg.sweepMin) + "," +
+                 String(cfg.sweepMax) + "," + String(cfg.sweepStep));
 }
 
 // Segment patterns for digits 0-9, one bit per segment a..g (bit0=a .. bit6=g)
@@ -314,7 +334,10 @@ void handleCommand(String line) {
       cfg.buzzerEnabled   = vals[4] != 0;
       cfg.relayEnabled    = vals[5] != 0;
       step_ = (step_ < 0 ? -1 : 1) * cfg.sweepStep;  // apply the new step size right away
-      saveConfig();
+      // A "parked" range (min >= max, used by the app's tape measure) is
+      // temporary: it is NOT saved, so a dropped connection or a restart
+      // always brings the normal sweep back.
+      if (cfg.sweepMin < cfg.sweepMax) saveConfig();
       Serial.println("CFG_OK");
     } else {
       Serial.println("CFG_ERR");

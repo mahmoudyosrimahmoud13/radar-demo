@@ -8,3 +8,14 @@
 - [`radar_app/`](radar_app): EchoSweep Flutter Android app (see its [README](radar_app/README.md))
 
 The APK is built by GitHub Actions on every push to `master`. Push a `v*.*.*` tag to publish it as a GitHub Release.
+
+## Linux desktop version (USB, no Bluetooth)
+
+Every release also has `echosweep_<version>_amd64.deb`. It is the same app and UI, but it talks to the Uno over its USB cable instead of the HC-05.
+
+1. Install: `sudo apt install ./echosweep_<version>_amd64.deb`
+2. One time only, allow your user to open USB serial ports: `sudo usermod -aG dialout $USER`, then log out and back in.
+3. Unplug the HC-05 TX/RX wires from pins 0 and 1 (they share the line with USB).
+4. Plug in the Uno, open EchoSweep from the app menu, and tap `/dev/ttyACM0`.
+
+Firmware updates also work over the cable on this version.
