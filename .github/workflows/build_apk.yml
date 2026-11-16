@@ -1,5 +1,14 @@
 name: Build Android APK
 
+# Builds the radar companion app (it lives in radar_app/, not the repo root):
+#  - on every push/PR to main/master: a CI check, APK attached as a run artifact
+#  - on pushing a version tag (v1.0.0 etc.), or running this by hand with
+#    "Create a GitHub Release" checked: also publishes a GitHub Release
+#    with the APK attached as a downloadable asset -- a real link you can
+#    hand someone to install it, not something buried in a CI run.
+# No Play Store account or signing key needed for a sideload build like
+# this one (Android will ask the installer to confirm "install from
+# unknown sources" the first time, same as any APK outside the Play Store).
 on:
   push:
     branches: [main, master]
@@ -14,7 +23,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: write # needed to publish a GitHub Release
 
 jobs:
   build:
@@ -25,76 +34,81 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+
       - name: Set up Java (required by the Android Gradle build)
         uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: "17" }
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
-        with: { channel: stable }
+        with:
+          channel: stable
+
       - name: Generate the android/ project if it's not committed
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android --org com.mahmoud.radar .
           fi
+
       - name: Make sure the Bluetooth/notification permissions are in the manifest
+        # Idempotent: only adds a line if it's not already there, so this is
+        # harmless whether android/ was just generated above or committed
+        # to the repo with the permissions already in place.
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
-          for PERM in "android.permission.BLUETOOTH" "android.permission.BLUETOOTH_ADMIN" \
-            "android.permission.BLUETOOTH_CONNECT" "android.permission.BLUETOOTH_SCAN" \
-            "android.permission.ACCESS_FINE_LOCATION" "android.permission.POST_NOTIFICATIONS"; do
+          for PERM in \
+            "android.permission.BLUETOOTH" \
+            "android.permission.BLUETOOTH_ADMIN" \
+            "android.permission.BLUETOOTH_CONNECT" \
+            "android.permission.BLUETOOTH_SCAN" \
+            "android.permission.ACCESS_FINE_LOCATION" \
+            "android.permission.POST_NOTIFICATIONS"; do
             if ! grep -q "$PERM" "$MANIFEST"; then
               sed -i "s#<manifest #<manifest xmlns:tools=\"http://schemas.android.com/tools\" #" "$MANIFEST" 2>/dev/null || true
               sed -i "0,/<manifest[^>]*>/s##&\n    <uses-permission android:name=\"$PERM\" />#" "$MANIFEST"
             fi
           done
           cat "$MANIFEST"
+
       - name: Install dependencies
         run: flutter pub get
+
       - name: Patch flutter_bluetooth_serial's build.gradle
+        # This plugin hasn't been updated since ~2021 and its build.gradle
+        # still calls jcenter() (shut down, and removed as a Gradle method
+        # entirely in Gradle 8) and applies the Android Gradle plugin the
+        # old per-module way, which modern Flutter's root settings.gradle
+        # (which already declares the AGP/Kotlin plugin versions once,
+        # centrally) conflicts with. We rewrite the plugin's own
+        # build.gradle in the pub cache, right after it's fetched, to a
+        # minimal modern version. Nothing about the plugin's actual Dart
+        # or Kotlin code changes -- only this one build file. The
+        # replacement content is base64-encoded on a single line here
+        # (rather than a multi-line heredoc) so it can't break this YAML
+        # file's indentation rules.
         run: |
           shopt -s nullglob
+          PATCHED_GRADLE_B64="Z3JvdXAgJ2lvLmdpdGh1Yi5lZHVmb2xseS5mbHV0dGVyYmx1ZXRvb3Roc2VyaWFsJwp2ZXJzaW9uICcxLjAtU05BUFNIT1QnCgphcHBseSBwbHVnaW46ICdjb20uYW5kcm9pZC5saWJyYXJ5JwoKYW5kcm9pZCB7CiAgICBuYW1lc3BhY2UgJ2lvLmdpdGh1Yi5lZHVmb2xseS5mbHV0dGVyYmx1ZXRvb3Roc2VyaWFsJwogICAgY29tcGlsZVNka1ZlcnNpb24gMzQKCiAgICBjb21waWxlT3B0aW9ucyB7CiAgICAgICAgc291cmNlQ29tcGF0aWJpbGl0eSBKYXZhVmVyc2lvbi5WRVJTSU9OXzFfOAogICAgICAgIHRhcmdldENvbXBhdGliaWxpdHkgSmF2YVZlcnNpb24uVkVSU0lPTl8xXzgKICAgIH0KICAgIGRlZmF1bHRDb25maWcgewogICAgICAgIG1pblNka1ZlcnNpb24gMTkKICAgICAgICB0ZXN0SW5zdHJ1bWVudGF0aW9uUnVubmVyICJhbmRyb2lkeC50ZXN0LnJ1bm5lci5BbmRyb2lkSlVuaXRSdW5uZXIiCiAgICB9CiAgICBsaW50T3B0aW9ucyB7CiAgICAgICAgZGlzYWJsZSAnSW52YWxpZFBhY2thZ2UnCiAgICB9CiAgICBkZXBlbmRlbmNpZXMgewogICAgICAgIGltcGxlbWVudGF0aW9uICdhbmRyb2lkeC5hcHBjb21wYXQ6YXBwY29tcGF0OjEuMy4wJwogICAgfQp9CgpkZXBlbmRlbmNpZXMgewp9Cg=="
           for f in "$HOME/.pub-cache/hosted/pub.dev/flutter_bluetooth_serial-"*/android/build.gradle; do
-            cat > "$f" << 'GEOF'
-group 'io.github.edufolly.flutterbluetoothserial'
-version '1.0-SNAPSHOT'
-
-apply plugin: 'com.android.library'
-
-android {
-    namespace 'io.github.edufolly.flutterbluetoothserial'
-    compileSdkVersion 34
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    defaultConfig {
-        minSdkVersion 19
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    }
-    lintOptions {
-        disable 'InvalidPackage'
-    }
-    dependencies {
-        implementation 'androidx.appcompat:appcompat:1.3.0'
-    }
-}
-
-dependencies {
-}
-GEOF
+            echo "$PATCHED_GRADLE_B64" | base64 -d > "$f"
             echo "Patched $f"
           done
-      - name: Analyze (non-blocking)
+
+      - name: Analyze (non-blocking -- catches obvious issues without failing the build over lints)
         run: flutter analyze || true
+
       - name: Build release APK
         run: flutter build apk --release
+
       - name: Upload APK as a run artifact
         uses: actions/upload-artifact@v4
         with:
           name: radar-app-release-apk
           path: radar_app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
       - name: Rename APK for the release asset (version tag or run number)
         if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
         run: |
@@ -102,6 +116,7 @@ GEOF
           [ -z "$VERSION" ] && VERSION="run-${GITHUB_RUN_NUMBER}"
           cp build/app/outputs/flutter-apk/app-release.apk "radar-app-${VERSION}.apk"
           echo "ASSET_PATH=radar_app/radar-app-${VERSION}.apk" >> "$GITHUB_ENV"
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
         uses: softprops/action-gh-release@v2
