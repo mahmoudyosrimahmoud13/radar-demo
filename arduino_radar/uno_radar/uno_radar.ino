@@ -148,6 +148,9 @@ const int SEG_PINS[7] = {2, 3, 12, 13, A0, A1, A2};
 const bool COMMON_CATHODE = true; // flip to false + rewire common pin to 5V if your digit is common-anode
 
 const int BATTERY_SENSE_PIN = A3;
+// Set to true only if a li-ion cell's + is wired to A3. With a USB power
+// bank (no cell wired), leave false so the app doesn't show a fake level.
+const bool HAS_BATTERY_SENSE = false;
 const unsigned long BATTERY_REPORT_INTERVAL_MS = 10000; // don't spam the link with battery readings
 unsigned long lastBatteryReportAt = 0;
 
@@ -373,7 +376,7 @@ void loop() {
 
   updateDisplay(distance, alert);
 
-  if (millis() - lastBatteryReportAt > BATTERY_REPORT_INTERVAL_MS) {
+  if (HAS_BATTERY_SENSE && millis() - lastBatteryReportAt > BATTERY_REPORT_INTERVAL_MS) {
     lastBatteryReportAt = millis();
     Serial.println("BATT," + String(readBatteryVoltage(), 2));
   }
