@@ -137,9 +137,43 @@ class RadarBluetoothService {
     return await FlutterBluetoothSerial.instance.getBondedDevices();
   }
 
-  Future<void> connect(BluetoothDevice device) async {
+  /// Finds nearby Bluetooth devices (paired or not) for in-app pairing.
+  Stream<BluetoothDiscoveryResult> scan() => FlutterBluetoothSerial.instance.startDiscovery();
+
+  Future<void> stopScan() async {
+    try {
+      await FlutterBluetoothSerial.instance.cancelDiscovery();
+    } catch (_) {}
+  }
+
+  /// Pairs with [device] inside the app, answering the PIN prompt with
+  /// [pin] automatically (the HC-05 was set to 1234; factory default 0000).
+  Future<bool> pair(BluetoothDevice device, {String pin = '1234'}) async {
+    if (device.isBonded) return true;
+    await stopScan();
+    final ok = await FlutterBluetoothSerial.instance.bondDeviceAtAddress(device.address, pin: pin, passkeyConfirm: true);
+    return ok ?? false;
+  }
+
+  /// Connects to [device], retrying a few times: an HC-05 often refuses
+  /// the first attempt right after power-up or pairing.
+  Future<void> connect(BluetoothDevice device, {int attempts = 3}) async {
     await disconnect();
-    _connection = await BluetoothConnection.toAddress(device.address);
+    await stopScan(); // discovery running in the background makes connecting fail
+    Object? lastError;
+    for (int i = 0; i < attempts; i++) {
+      try {
+        _connection = await BluetoothConnection.toAddress(device.address).timeout(const Duration(seconds: 12));
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+    }
+    if (lastError != null || _connection == null) {
+      throw Exception(friendlyError(lastError));
+    }
     _stateController.add(true);
 
     _connection!.input!.listen(
@@ -163,6 +197,22 @@ class RadarBluetoothService {
     await _connection?.finish();
     _connection = null;
     _stateController.add(false);
+  }
+
+  /// Turns raw Android Bluetooth errors into something a person can act on.
+  static String friendlyError(Object? e) {
+    final t = (e ?? '').toString().toLowerCase();
+    if (t.contains('timeout') || t.contains('read failed') || t.contains('socket')) {
+      return 'The HC-05 didn\'t answer. Check its light is blinking fast (not slowly), that it has power, '
+          'and that nothing else is connected to it. Then try again.';
+    }
+    if (t.contains('permission')) {
+      return 'Bluetooth permission is missing. Allow "Nearby devices" for EchoSweep in Android settings.';
+    }
+    if (t.contains('disabled') || t.contains('not enabled')) {
+      return 'Bluetooth is off. Turn it on and try again.';
+    }
+    return 'Could not connect. Make sure the radar is powered on and close by, then try again.';
   }
 
   void sendLine(String command) {
