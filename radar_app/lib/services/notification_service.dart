@@ -12,7 +12,7 @@ class RadarNotificationService {
   Future<void> init() async {
     if (_initialized) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _plugin.initialize(const InitializationSettings(android: androidInit));
+    await _plugin.initialize(InitializationSettings(android: androidInit));
 
     const channel = AndroidNotificationChannel(
       'radar_presence',
@@ -36,7 +36,7 @@ class RadarNotificationService {
       'Detected at ${event.angle}°, ${event.distanceCm}cm • '
           '${event.timestamp.hour.toString().padLeft(2, '0')}:'
           '${event.timestamp.minute.toString().padLeft(2, '0')}',
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'radar_presence',
           'Room presence',
@@ -53,7 +53,7 @@ class RadarNotificationService {
       3,
       'Radar alert',
       message,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'radar_presence',
           'Room presence',

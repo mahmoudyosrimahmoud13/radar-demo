@@ -33,13 +33,13 @@ class ClayContainer extends StatelessWidget {
         ? [
             BoxShadow(
               color: ClayColors.shadowDark.withOpacity(0.5),
-              offset: const Offset(-4, -4),
+              offset: Offset(-4, -4),
               blurRadius: 8,
               spreadRadius: -2,
             ),
             BoxShadow(
               color: ClayColors.shadowLight.withOpacity(0.7),
-              offset: const Offset(4, 4),
+              offset: Offset(4, 4),
               blurRadius: 8,
               spreadRadius: -2,
             ),
@@ -47,18 +47,18 @@ class ClayContainer extends StatelessWidget {
         : [
             BoxShadow(
               color: ClayColors.shadowLight.withOpacity(0.9),
-              offset: const Offset(-6, -6),
+              offset: Offset(-6, -6),
               blurRadius: 14,
             ),
             BoxShadow(
               color: ClayColors.shadowDark.withOpacity(0.35),
-              offset: const Offset(6, 6),
+              offset: Offset(6, 6),
               blurRadius: 14,
             ),
           ];
 
     final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
+      duration: Duration(milliseconds: 150),
       padding: padding,
       decoration: BoxDecoration(
         color: bg,
@@ -76,13 +76,13 @@ class ClayContainer extends StatelessWidget {
 /// A small circular clay badge, used for status dots / icon buttons.
 class ClayBadge extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final double size;
 
   const ClayBadge({
     super.key,
     required this.icon,
-    this.iconColor = ClayColors.primary,
+    this.iconColor,
     this.size = 48,
   });
 
@@ -91,7 +91,7 @@ class ClayBadge extends StatelessWidget {
     return ClayContainer(
       borderRadius: size / 2,
       padding: EdgeInsets.all(size * 0.22),
-      child: Icon(icon, color: iconColor, size: size * 0.5),
+      child: Icon(icon, color: iconColor ?? ClayColors.primary, size: size * 0.5),
     );
   }
 }

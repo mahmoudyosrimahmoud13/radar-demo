@@ -7,7 +7,9 @@ import 'screens/connect_screen.dart';
 import 'screens/home_shell.dart';
 import 'widgets/app_logo.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ThemeController.instance.load();
   runApp(const RadarApp());
 }
 
@@ -16,11 +18,15 @@ class RadarApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'EchoSweep',
-      theme: buildClayTheme(),
-      debugShowCheckedModeBanner: false,
-      home: const _RootRouter(),
+    // Rebuilds the whole app (with the new palette) when dark mode flips.
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeController.instance,
+      builder: (context, isDark, _) => MaterialApp(
+        title: 'EchoSweep',
+        theme: buildClayTheme(),
+        debugShowCheckedModeBanner: false,
+        home: _RootRouter(),
+      ),
     );
   }
 }
@@ -84,7 +90,7 @@ class _RootRouterState extends State<_RootRouter> {
   @override
   Widget build(BuildContext context) {
     if (_guideSeen == null) {
-      return const Scaffold(body: Center(child: AppLogo(size: 120)));
+      return Scaffold(body: Center(child: AppLogo(size: 120)));
     }
     if (_guideSeen == false) {
       return AssemblyGuideScreen(onDone: _finishGuide);
@@ -92,7 +98,7 @@ class _RootRouterState extends State<_RootRouter> {
     if (!_connected) {
       return Scaffold(
         appBar: AppBar(
-          title: const Row(
+          title: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppLogo(size: 28),
@@ -101,9 +107,10 @@ class _RootRouterState extends State<_RootRouter> {
             ],
           ),
           actions: [
+            ThemeToggleButton(),
             IconButton(
               tooltip: 'Assembly guide',
-              icon: const Icon(Icons.menu_book_outlined),
+              icon: Icon(Icons.menu_book_outlined),
               onPressed: _openGuide,
             ),
           ],

@@ -88,12 +88,12 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
   Widget build(BuildContext context) {
     final net = _network;
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         children: [
           if (net != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(bottom: 20),
               child: ClayContainer(
                 onTap: _openWebPage,
                 child: Column(
@@ -105,21 +105,21 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
                           net.isHotspotMode ? Icons.wifi_tethering : Icons.wifi,
                           color: ClayColors.primary,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           net.isHotspotMode ? 'Running its own hotspot' : 'Connected to ${net.ssid}',
-                          style: const TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(net.webUrl, style: const TextStyle(color: ClayColors.primary)),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 6),
+                    Text(net.webUrl, style: TextStyle(color: ClayColors.primary)),
+                    SizedBox(height: 4),
                     Text(
                       net.isHotspotMode
                           ? 'Join your phone\'s WiFi to "${net.ssid}" first, then tap to open this page.'
                           : 'Tap to open the live radar page (your phone needs to be on the same WiFi network).',
-                      style: const TextStyle(color: ClayColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: ClayColors.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),
@@ -129,19 +129,19 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('WiFi network name', style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
+                Text('WiFi network name', style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
                 TextField(
                   controller: _ssidCtrl,
-                  style: const TextStyle(color: ClayColors.textPrimary),
-                  decoration: const InputDecoration(border: InputBorder.none),
+                  style: TextStyle(color: ClayColors.textPrimary),
+                  decoration: InputDecoration(border: InputBorder.none),
                 ),
-                const Divider(color: ClayColors.shadowDark),
-                const SizedBox(height: 8),
-                const Text('Password', style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
+                Divider(color: ClayColors.shadowDark),
+                SizedBox(height: 8),
+                Text('Password', style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
                 TextField(
                   controller: _passCtrl,
                   obscureText: _obscure,
-                  style: const TextStyle(color: ClayColors.textPrimary),
+                  style: TextStyle(color: ClayColors.textPrimary),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     suffixIcon: IconButton(
@@ -153,17 +153,17 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           ClayContainer(
             onTap: _send,
-            child: const Center(
+            child: Center(
               child: Text('Send to Arduino', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
             ),
           ),
           if (_status != null)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(_status!, style: const TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
+              padding: EdgeInsets.only(top: 16),
+              child: Text(_status!, style: TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
             ),
         ],
       ),

@@ -70,7 +70,7 @@ class Stk500Flasher {
             'The board may not be in bootloader mode, or the Bluetooth '
             'link is too slow/unstable right now.');
       }
-      await Future.delayed(const Duration(milliseconds: 20));
+      await Future.delayed(Duration(milliseconds: 20));
     }
     final result = _inbox.sublist(0, count);
     _inbox.removeRange(0, count);
@@ -136,7 +136,7 @@ class Stk500Flasher {
       _inbox.clear();
       bt.sendRaw([_cmdGetSync, _crcEop]);
       try {
-        final resp = await _waitForBytes(2, const Duration(milliseconds: 400));
+        final resp = await _waitForBytes(2, Duration(milliseconds: 400));
         if (resp[0] == _stkInsync && resp[1] == _stkOk) return;
       } catch (_) {
         // timeout on this attempt, try again
@@ -159,7 +159,7 @@ class Stk500Flasher {
     final lenLo = pageBytes.length & 0xFF;
     await _sendAndExpectOk(
       [_cmdProgPage, lenHi, lenLo, _memtypeFlash, ...pageBytes],
-      timeout: const Duration(seconds: 3),
+      timeout: Duration(seconds: 3),
     );
   }
 }

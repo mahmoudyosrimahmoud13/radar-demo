@@ -132,7 +132,7 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
       final int bucket = math.max(0, math.min(_bucketCount - 1, (r.angle / bucketDeg).round()));
       _samples.putIfAbsent(bucket, () => <int>[]).add(r.distanceCm);
     });
-    _timer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+    _timer = Timer.periodic(Duration(milliseconds: 200), (_) {
       final elapsed = DateTime.now().difference(_scanStart!);
       if (elapsed >= scanDuration) {
         _finishScan();
@@ -166,11 +166,11 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Name this map'),
+        title: Text('Name this map'),
         content: TextField(controller: ctrl, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Save')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text('Save')),
         ],
       ),
     );
@@ -203,16 +203,16 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
   Widget build(BuildContext context) {
     final map = _current;
     return Scaffold(
-      appBar: AppBar(title: const Text('Room map')),
+      appBar: AppBar(title: Text('Room map')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           ClayContainer(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(10),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: Container(
-                color: const Color(0xFF0B1220),
+                color: Color(0xFF0B1220),
                 child: AspectRatio(
                   aspectRatio: 1.7,
                   child: CustomPaint(
@@ -227,14 +227,14 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (_scanning) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(value: _progress, minHeight: 8),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Scanning... keep the radar still and stay out of the room if you can.',
               textAlign: TextAlign.center,
               style: TextStyle(color: ClayColors.textSecondary),
@@ -247,16 +247,16 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
                     onTap: _startScan,
                     child: Center(
                       child: Text(map == null ? 'Scan this room' : 'Scan again',
-                          style: const TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
+                          style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ),
                 if (map != null && map.name == 'Unsaved scan') ...[
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: ClayContainer(
                       onTap: _saveCurrent,
-                      child: const Center(
+                      child: Center(
                         child: Text('Save map', style: TextStyle(color: ClayColors.success, fontWeight: FontWeight.w700)),
                       ),
                     ),
@@ -265,13 +265,13 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
               ],
             ),
           if (map != null && !_scanning) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ClayContainer(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(map.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ClayColors.textPrimary)),
-                  const SizedBox(height: 10),
+                  Text(map.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ClayColors.textPrimary)),
+                  SizedBox(height: 10),
                   _row('Nearest surface', map.nearestCm != null ? '${map.nearestCm} cm' : '--'),
                   _row('Farthest surface', map.farthestCm != null ? '${map.farthestCm} cm' : '--'),
                   _row('Approx. area in view', '${map.areaM2.toStringAsFixed(1)} m²'),
@@ -281,7 +281,7 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
             ),
           ],
           if (!_scanning && map == null)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text(
                 'Place the radar where it will stay (a shelf or corner works well), '
@@ -292,33 +292,33 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
               ),
             ),
           if (_saved.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text('Saved maps', style: TextStyle(fontWeight: FontWeight.w800, color: ClayColors.textPrimary, fontSize: 16)),
-            const SizedBox(height: 10),
+            SizedBox(height: 24),
+            Text('Saved maps', style: TextStyle(fontWeight: FontWeight.w800, color: ClayColors.textPrimary, fontSize: 16)),
+            SizedBox(height: 10),
             for (final m in _saved)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: EdgeInsets.only(bottom: 10),
                 child: ClayContainer(
                   onTap: () => setState(() => _current = m),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+                  padding: EdgeInsets.fromLTRB(16, 8, 4, 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.map_outlined, color: ClayColors.primary),
-                      const SizedBox(width: 12),
+                      Icon(Icons.map_outlined, color: ClayColors.primary),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary)),
+                            Text(m.name, style: TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary)),
                             Text(
                               '${m.createdAt.day}/${m.createdAt.month}/${m.createdAt.year} • ${m.areaM2.toStringAsFixed(1)} m²',
-                              style: const TextStyle(color: ClayColors.textSecondary, fontSize: 12),
+                              style: TextStyle(color: ClayColors.textSecondary, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: ClayColors.textSecondary),
+                        icon: Icon(Icons.delete_outline, color: ClayColors.textSecondary),
                         onPressed: () => _delete(m),
                       ),
                     ],
@@ -333,11 +333,11 @@ class _RoomMapScreenState extends State<RoomMapScreen> {
 
   Widget _row(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: const TextStyle(color: ClayColors.textSecondary))),
-          Text(value, style: const TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700)),
+          Expanded(child: Text(label, style: TextStyle(color: ClayColors.textSecondary))),
+          Text(value, style: TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700)),
         ],
       ),
     );

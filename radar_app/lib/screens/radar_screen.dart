@@ -42,7 +42,7 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     // Repaints ~60 times a second so the fade looks smooth even between readings.
-    _ticker = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+    _ticker = AnimationController(vsync: this, duration: Duration(seconds: 1))..repeat();
     _sub = widget.bluetooth.lines.listen(_onLine);
   }
 
@@ -67,20 +67,20 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  bool get _live => _lastReadingAt != null && DateTime.now().difference(_lastReadingAt!) < const Duration(seconds: 2);
+  bool get _live => _lastReadingAt != null && DateTime.now().difference(_lastReadingAt!) < Duration(seconds: 2);
 
   @override
   Widget build(BuildContext context) {
     final alert = _latest?.alert == true;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       children: [
         ClayContainer(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(10),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: Container(
-              color: const Color(0xFF0B1220),
+              color: Color(0xFF0B1220),
               child: AspectRatio(
                 aspectRatio: 1.7,
                 child: AnimatedBuilder(
@@ -100,12 +100,12 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.circle, size: 10, color: _live ? ClayColors.success : ClayColors.textSecondary),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               _live ? 'LIVE' : 'Waiting for the radar...',
               style: TextStyle(
@@ -116,12 +116,12 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         ClayContainer(
           onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => RoomMapScreen(bluetooth: widget.bluetooth),
           )),
-          child: const Row(
+          child: Row(
             children: [
               Icon(Icons.map_outlined, color: ClayColors.primary),
               SizedBox(width: 12),
@@ -132,11 +132,11 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         Row(
           children: [
             Expanded(child: _statCard('Angle', _latest != null ? '${_latest!.angle}°' : '--', Icons.explore_outlined)),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _statCard(
                 'Distance',
@@ -146,11 +146,11 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(
           children: [
             Expanded(child: _statCard('Nearest', _nearestCm != null ? '$_nearestCm cm' : '--', Icons.my_location)),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _statCard(
                 'Status',
@@ -167,17 +167,17 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
 
   Widget _statCard(String label, String value, IconData icon, {Color? color}) {
     return ClayContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       child: Row(
         children: [
           Icon(icon, color: color ?? ClayColors.primary, size: 22),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
-                const SizedBox(height: 2),
+                Text(label, style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
+                SizedBox(height: 2),
                 Text(
                   value,
                   style: TextStyle(color: color ?? ClayColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w800),

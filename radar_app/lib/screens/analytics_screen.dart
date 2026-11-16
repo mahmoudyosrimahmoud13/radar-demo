@@ -28,7 +28,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<void> _load() async {
-    final from = DateTime.now().subtract(const Duration(days: 7));
+    final from = DateTime.now().subtract(Duration(days: 7));
     final events = await EventStore.instance.since(from);
     if (mounted) setState(() => _week = events);
   }
@@ -76,40 +76,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       children: [
         Row(
           children: [
             Expanded(child: _summaryCard('Entries today', '$todaysEntries', ClayColors.primary)),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(child: _summaryCard('Time occupied today', _fmtDuration(totalOccupiedToday), ClayColors.success)),
           ],
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         ClayContainer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Busiest hours (last 7 days)',
+              Text('Busiest hours (last 7 days)',
                   style: TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SizedBox(
                 height: 160,
                 child: BarChart(
                   BarChartData(
-                    gridData: const FlGridData(show: false),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: false),
                     titlesData: FlTitlesData(
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
                           interval: 6,
                           getTitlesWidget: (value, meta) => Text(
                             '${value.toInt()}h',
-                            style: const TextStyle(color: ClayColors.textSecondary, fontSize: 10),
+                            style: TextStyle(color: ClayColors.textSecondary, fontSize: 10),
                           ),
                         ),
                       ),
@@ -131,33 +131,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         ClayContainer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Entries per day (last 7 days)',
+              Text('Entries per day (last 7 days)',
                   style: TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SizedBox(
                 height: 160,
                 child: BarChart(
                   BarChartData(
-                    gridData: const FlGridData(show: false),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: false),
                     titlesData: FlTitlesData(
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
                             final days = dailyCounts.keys.toList();
                             final idx = value.toInt();
-                            if (idx < 0 || idx >= days.length) return const SizedBox();
+                            if (idx < 0 || idx >= days.length) return SizedBox();
                             return Text('${days[idx].day}/${days[idx].month}',
-                                style: const TextStyle(color: ClayColors.textSecondary, fontSize: 10));
+                                style: TextStyle(color: ClayColors.textSecondary, fontSize: 10));
                           },
                         ),
                       ),
@@ -179,8 +179,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        const Padding(
+        SizedBox(height: 12),
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
           child: Text(
             'Based on a single rotating ultrasonic sensor watching the doorway angle -- '
@@ -197,8 +197,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 6),
+          Text(label, style: TextStyle(color: ClayColors.textSecondary, fontSize: 12)),
+          SizedBox(height: 6),
           Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w700)),
         ],
       ),

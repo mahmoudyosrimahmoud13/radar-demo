@@ -62,16 +62,35 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
+        leading: widget.bluetooth.isDemo
+            ? IconButton(
+                tooltip: 'Exit demo',
+                icon: Icon(Icons.logout),
+                onPressed: () => widget.bluetooth.disconnect(),
+              )
+            : null,
         actions: [
+          if (widget.bluetooth.isDemo)
+            Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: ClayColors.success, borderRadius: BorderRadius.circular(8)),
+                  child: Text('DEMO', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ),
+          ThemeToggleButton(),
           if (widget.onOpenGuide != null)
             IconButton(
               tooltip: 'Assembly guide',
-              icon: const Icon(Icons.menu_book_outlined),
+              icon: Icon(Icons.menu_book_outlined),
               onPressed: widget.onOpenGuide,
             ),
           if (_battery != null)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 8),
               child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -81,7 +100,7 @@ class _HomeShellState extends State<HomeShell> {
                       color: _battery!.isLow ? ClayColors.danger : ClayColors.textSecondary,
                       size: 20,
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       '${_battery!.roughPercent}%',
                       style: TextStyle(
@@ -94,7 +113,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: EdgeInsets.only(right: 16),
             child: Center(
               child: ClayBadge(
                 icon: _connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
@@ -107,13 +126,13 @@ class _HomeShellState extends State<HomeShell> {
       ),
       body: pages[_index],
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: const BoxDecoration(color: ClayColors.background),
+        padding: EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(color: ClayColors.background),
         child: NavigationBar(
           backgroundColor: ClayColors.background,
           selectedIndex: _index,
           onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: const [
+          destinations: [
             NavigationDestination(icon: Icon(Icons.radar), label: 'Radar'),
             NavigationDestination(icon: Icon(Icons.event_note), label: 'Events'),
             NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Analytics'),

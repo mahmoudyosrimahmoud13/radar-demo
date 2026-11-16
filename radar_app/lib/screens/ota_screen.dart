@@ -42,8 +42,8 @@ class _OtaScreenState extends State<OtaScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Before you flash wirelessly'),
-            content: const Text(
+            title: Text('Before you flash wirelessly'),
+            content: Text(
               'If the Bluetooth connection drops while this is writing to the '
               'Arduino, the board will be left without working firmware until '
               'you reflash it over USB. It is not permanently damaged -- just '
@@ -55,10 +55,10 @@ class _OtaScreenState extends State<OtaScreen> {
               'Continue?',
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel')),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('I understand, continue', style: TextStyle(color: ClayColors.danger)),
+                child: Text('I understand, continue', style: TextStyle(color: ClayColors.danger)),
               ),
             ],
           ),
@@ -68,6 +68,14 @@ class _OtaScreenState extends State<OtaScreen> {
 
   Future<void> _startFlash() async {
     if (_hexContents == null) return;
+    if (widget.bluetooth.isDemo) {
+      setState(() {
+        _state = _OtaState.error;
+        _statusMessage = 'Demo mode: firmware updates need the real Arduino. '
+            'Connect to your HC-05 to use this.';
+      });
+      return;
+    }
     if (!await _confirmRisk()) return;
 
     setState(() {
@@ -79,7 +87,7 @@ class _OtaScreenState extends State<OtaScreen> {
     widget.bluetooth.sendLine('ENTERUPDATE');
     // Give the chip a moment to actually reset before we start syncing --
     // the bootloader only listens for ~1s after reset, so don't wait long.
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(Duration(milliseconds: 300));
 
     setState(() => _state = _OtaState.flashing);
     final flasher = Stk500Flasher(widget.bluetooth);
@@ -110,12 +118,12 @@ class _OtaScreenState extends State<OtaScreen> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         children: [
           ClayContainer(
             color: ClayColors.danger.withOpacity(0.08),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.warning_amber_rounded, color: ClayColors.danger),
                 SizedBox(width: 12),
@@ -128,24 +136,24 @@ class _OtaScreenState extends State<OtaScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           ClayContainer(
             onTap: _pickHexFile,
             child: Row(
               children: [
-                const ClayBadge(icon: Icons.insert_drive_file_outlined, size: 44),
-                const SizedBox(width: 16),
+                ClayBadge(icon: Icons.insert_drive_file_outlined, size: 44),
+                SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     _fileName ?? 'Choose a .hex file...',
-                    style: const TextStyle(color: ClayColors.textPrimary),
+                    style: TextStyle(color: ClayColors.textPrimary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           if (_state == _OtaState.flashing || _state == _OtaState.waitingForReset) ...[
             ClayContainer(
               child: Column(
@@ -155,8 +163,8 @@ class _OtaScreenState extends State<OtaScreen> {
                     backgroundColor: ClayColors.shadowDark.withOpacity(0.3),
                     color: ClayColors.primary,
                   ),
-                  const SizedBox(height: 12),
-                  Text(_statusMessage, style: const TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
+                  SizedBox(height: 12),
+                  Text(_statusMessage, style: TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
                 ],
               ),
             ),
@@ -177,7 +185,7 @@ class _OtaScreenState extends State<OtaScreen> {
           ],
           if (_state == _OtaState.done || _state == _OtaState.error)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.only(top: 16),
               child: Text(
                 _statusMessage,
                 style: TextStyle(color: _state == _OtaState.error ? ClayColors.danger : ClayColors.success),

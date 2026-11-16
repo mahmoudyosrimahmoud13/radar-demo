@@ -33,14 +33,14 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_events.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('No entries or exits logged yet.', style: TextStyle(color: ClayColors.textSecondary)),
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       itemCount: _events.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => SizedBox(height: 12),
       itemBuilder: (context, i) {
         final e = _events[i];
         final entered = e.type == PresenceEventType.entered;
@@ -52,18 +52,18 @@ class _EventsScreenState extends State<EventsScreen> {
                 iconColor: entered ? ClayColors.success : ClayColors.warning,
                 size: 44,
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       entered ? 'Someone entered' : 'Someone left',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: ClayColors.textPrimary),
                     ),
                     Text(
                       '${_fmt.format(e.timestamp)} • ${e.angle}°, ${e.distanceCm}cm',
-                      style: const TextStyle(color: ClayColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: ClayColors.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),

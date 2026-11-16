@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       children: [
         ClayContainer(
           child: Column(
@@ -53,13 +53,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _slider('Sweep max angle', _sweepMax, 90, 180, (v) => setState(() => _sweepMax = v), suffix: '°'),
               _slider('Sweep step', _step, 1, 10, (v) => setState(() => _step = v)),
               SwitchListTile(
-                title: const Text('Buzzer', style: TextStyle(color: ClayColors.textPrimary)),
+                title: Text('Buzzer', style: TextStyle(color: ClayColors.textPrimary)),
                 value: _buzzerOn,
                 activeColor: ClayColors.primary,
                 onChanged: (v) => setState(() => _buzzerOn = v),
               ),
               SwitchListTile(
-                title: const Text('Relay', style: TextStyle(color: ClayColors.textPrimary)),
+                title: Text('Relay', style: TextStyle(color: ClayColors.textPrimary)),
                 value: _relayOn,
                 activeColor: ClayColors.primary,
                 onChanged: (v) => setState(() => _relayOn = v),
@@ -67,16 +67,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         ClayContainer(
           onTap: _send,
-          child: const Center(
+          child: Center(
             child: Text('Save to Arduino', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
           ),
         ),
         if (_ack != null) Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Text(_ack!, style: const TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
+          padding: EdgeInsets.only(top: 12),
+          child: Text(_ack!, style: TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
         ),
       ],
     );
@@ -86,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ${value.round()}$suffix', style: const TextStyle(color: ClayColors.textPrimary)),
+        Text('$label: ${value.round()}$suffix', style: TextStyle(color: ClayColors.textPrimary)),
         Slider(value: value, min: min, max: max, activeColor: ClayColors.primary, onChanged: onChanged),
       ],
     );
