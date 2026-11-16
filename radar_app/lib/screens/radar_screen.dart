@@ -5,6 +5,7 @@ import '../models/radar_reading.dart';
 import '../services/bluetooth_service.dart';
 import '../theme/clay_theme.dart';
 import '../widgets/clay_container.dart';
+import 'room_map_screen.dart';
 
 /// One echo the sensor saw, kept for a few seconds so it can fade out.
 class _Blip {
@@ -114,6 +115,22 @@ class _RadarScreenState extends State<RadarScreen> with SingleTickerProviderStat
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 14),
+        ClayContainer(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => RoomMapScreen(bluetooth: widget.bluetooth),
+          )),
+          child: const Row(
+            children: [
+              Icon(Icons.map_outlined, color: ClayColors.primary),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Map this room', style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700)),
+              ),
+              Icon(Icons.chevron_right, color: ClayColors.textSecondary),
+            ],
+          ),
         ),
         const SizedBox(height: 14),
         Row(
