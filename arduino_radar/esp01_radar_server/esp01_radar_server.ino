@@ -44,6 +44,17 @@ bool lastAlert    = false;
 String serialBuffer = "";
 bool staMode = false;
 
+// Recent lines from the Uno, numbered, so the phone app can connect over
+// WiFi and fetch every reading it missed (GET /stream?since=<n>).
+const int BUF_N = 64;
+String lineBuf[BUF_N];
+unsigned long seqCounter = 0;
+
+void pushLine(const String& l) {
+  lineBuf[seqCounter % BUF_N] = l;
+  seqCounter++;
+}
+
 void saveCreds(const String& ssid, const String& pass) {
   EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_VAL);
   for (int i = 0; i < 32; i++) EEPROM.write(EEPROM_SSID_ADDR + i, i < ssid.length() ? ssid[i] : 0);
@@ -169,6 +180,34 @@ void handleStatus() {
   server.send(200, "application/json", json);
 }
 
+// GET /stream?since=<n>  ->  first line: newest sequence number, then
+// every buffered line after <n> (oldest first). Used by the app's WiFi mode.
+void handleStream() {
+  unsigned long since = server.hasArg("since") ? strtoul(server.arg("since").c_str(), nullptr, 10) : 0;
+  if (since > seqCounter) since = 0;  // app is ahead: we restarted
+  if (seqCounter > BUF_N && since < seqCounter - BUF_N) since = seqCounter - BUF_N;
+  String out = String(seqCounter) + "\n";
+  for (unsigned long n = since; n < seqCounter; n++) {
+    out += lineBuf[n % BUF_N];
+    out += "\n";
+  }
+  server.send(200, "text/plain", out);
+}
+
+// GET /cmd?line=CFG,...  ->  forwards a settings command to the Uno.
+// Only CFG is allowed over WiFi (firmware updates stay Bluetooth/USB only).
+// Sent twice, because the Uno's software serial can miss a line that
+// arrives while it is busy sending.
+void handleCmd() {
+  if (!server.hasArg("line")) { server.send(400, "text/plain", "missing line"); return; }
+  String l = server.arg("line");
+  if (!l.startsWith("CFG,")) { server.send(403, "text/plain", "only CFG over WiFi"); return; }
+  Serial.println(l);
+  delay(60);
+  Serial.println(l);
+  server.send(200, "text/plain", "SENT");
+}
+
 void parseRadarLine(String line) {
   int aPos = line.indexOf("A,");
   int dPos = line.indexOf(",D,");
@@ -207,8 +246,9 @@ void parseWifiLine(String line) {
 }
 
 void handleSerialLine(String line) {
-  if (line.startsWith("WIFI,")) parseWifiLine(line);
-  else parseRadarLine(line);
+  if (line.startsWith("WIFI,")) { parseWifiLine(line); return; }
+  if (line.startsWith("A,")) { parseRadarLine(line); pushLine(line); return; }
+  if (line.startsWith("BATT,")) pushLine(line);
 }
 
 void setup() {
@@ -225,6 +265,8 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/data", handleData);
   server.on("/status", handleStatus);
+  server.on("/stream", handleStream);
+  server.on("/cmd", handleCmd);
   server.begin();
 
   reportStatus(); // so the Uno/app learn the IP even if we connected

@@ -109,6 +109,11 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
       setState(() => _status = 'Enter a network name first.');
       return;
     }
+    if (widget.bluetooth.isWifi) {
+      setState(() => _status = 'You are connected over WiFi already. To move the radar to a '
+          'different network, connect over Bluetooth first.');
+      return;
+    }
     widget.bluetooth.sendLine('WIFI,$ssid,$pass');
     setState(() {
       _status = 'Sent to the Arduino -- give it about 15 seconds to try '

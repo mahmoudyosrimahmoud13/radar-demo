@@ -348,6 +348,8 @@ void pollEspMessages() {
     if (c == '\n') {
       if (espLineBuffer.startsWith("NETSTATUS,")) {
         Serial.println(espLineBuffer); // -> HC-05 -> phone app
+      } else if (espLineBuffer.startsWith("CFG,")) {
+        handleCommand(espLineBuffer);  // settings sent from the app over WiFi
       }
       espLineBuffer = "";
     } else if (c != '\r') {

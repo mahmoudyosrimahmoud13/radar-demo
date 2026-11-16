@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/battery_reading.dart';
+import '../models/network_status.dart';
 import '../services/bluetooth_service.dart';
 import '../services/presence_controller.dart';
 import '../theme/clay_theme.dart';
@@ -39,6 +41,11 @@ class _HomeShellState extends State<HomeShell> {
     widget.bluetooth.lines.listen((line) {
       final battery = BatteryReading.parse(line);
       if (battery != null && mounted) setState(() => _battery = battery);
+      // Remember the ESP-01's address so "Connect over WiFi" can prefill it.
+      final net = NetworkStatus.parse(line);
+      if (net != null) {
+        SharedPreferences.getInstance().then((p) => p.setString('last_esp_ip', net.ip)).catchError((_) => true);
+      }
     });
   }
 
@@ -62,9 +69,9 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
-        leading: widget.bluetooth.isDemo
+        leading: (widget.bluetooth.isDemo || widget.bluetooth.isWifi)
             ? IconButton(
-                tooltip: 'Exit demo',
+                tooltip: widget.bluetooth.isDemo ? 'Exit demo' : 'Disconnect',
                 icon: Icon(Icons.logout),
                 onPressed: () => widget.bluetooth.disconnect(),
               )
@@ -116,7 +123,7 @@ class _HomeShellState extends State<HomeShell> {
             padding: EdgeInsets.only(right: 16),
             child: Center(
               child: ClayBadge(
-                icon: _connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                icon: !_connected ? Icons.bluetooth_disabled : (widget.bluetooth.isWifi ? Icons.wifi : Icons.bluetooth_connected),
                 iconColor: _connected ? ClayColors.success : ClayColors.danger,
                 size: 36,
               ),

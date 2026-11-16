@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -29,7 +30,100 @@ class RadarBluetoothService {
   /// flashing at the same time).
   Stream<Uint8List> get rawBytes => _rawController.stream;
 
-  bool get isConnected => _demo || (_connection?.isConnected ?? false);
+  bool get isConnected => _demo || _wifi || (_connection?.isConnected ?? false);
+
+  // ---------------------------------------------------------------------
+  // WIFI MODE: talk to the radar through the ESP-01 instead of the HC-05.
+  // Polls GET /stream?since=<n> for every reading since the last poll and
+  // feeds them into the same line stream Bluetooth uses, so every screen
+  // works unchanged. Settings (CFG) go out via GET /cmd. Firmware updates
+  // and WiFi setup stay Bluetooth-only.
+  // ---------------------------------------------------------------------
+  bool _wifi = false;
+  String? _wifiHost;
+  Timer? _wifiTimer;
+  int _wifiSeq = 0;
+  bool _wifiBusy = false;
+  int _wifiFails = 0;
+  final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+
+  bool get isWifi => _wifi;
+  String? get wifiHost => _wifiHost;
+
+  static String cleanHost(String input) {
+    var h = input.trim();
+    h = h.replaceFirst(RegExp(r'^https?://'), '');
+    while (h.endsWith('/')) {
+      h = h.substring(0, h.length - 1);
+    }
+    return h;
+  }
+
+  Future<String?> _httpGet(String url) async {
+    try {
+      final req = await _http.getUrl(Uri.parse(url));
+      final res = await req.close().timeout(const Duration(seconds: 3));
+      final body = await res.transform(utf8.decoder).join();
+      return res.statusCode == 200 ? body : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Connects over WiFi to the ESP-01 at [address] (e.g. 192.168.1.42, or
+  /// 192.168.4.1 when joined to its RadarESP hotspot). Throws if it doesn't answer.
+  Future<void> connectWifi(String address) async {
+    await disconnect();
+    final host = cleanHost(address);
+    final body = await _httpGet('http://$host/stream?since=0');
+    final seq = body == null ? null : int.tryParse(body.split('\n').first.trim());
+    if (seq == null) {
+      throw Exception('No EchoSweep radar answered at $host. Is your phone on the same WiFi?');
+    }
+    _wifi = true;
+    _wifiHost = host;
+    _wifiSeq = seq; // start from now, skip old buffered readings
+    _wifiFails = 0;
+    _stateController.add(true);
+    _wifiTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => _wifiTick());
+  }
+
+  Future<void> _wifiTick() async {
+    if (!_wifi || _wifiBusy) return;
+    _wifiBusy = true;
+    final body = await _httpGet('http://$_wifiHost/stream?since=$_wifiSeq');
+    _wifiBusy = false;
+    if (!_wifi) return;
+    if (body == null) {
+      _wifiFails++;
+      if (_wifiFails >= 20) stopWifi(); // about 3+ seconds of silence
+      return;
+    }
+    _wifiFails = 0;
+    final lines = body.split('\n');
+    final seq = int.tryParse(lines.first.trim());
+    if (seq == null) return;
+    for (final l in lines.skip(1)) {
+      final t = l.trim();
+      if (t.isNotEmpty && !_lineController.isClosed) _lineController.add(t);
+    }
+    _wifiSeq = seq;
+  }
+
+  void stopWifi() {
+    _wifiTimer?.cancel();
+    _wifiTimer = null;
+    if (_wifi) {
+      _wifi = false;
+      _stateController.add(false);
+    }
+  }
+
+  Future<void> _wifiSend(String command) async {
+    if (!command.startsWith('CFG,')) return; // only settings travel over WiFi
+    final ok = await _httpGet('http://$_wifiHost/cmd?line=${Uri.encodeQueryComponent(command)}');
+    if (!_lineController.isClosed) _lineController.add(ok != null ? 'CFG_OK' : 'CFG_ERR');
+  }
 
   // ---------------------------------------------------------------------
   // DEMO MODE: a simulated radar so the whole app can be tried before any
@@ -165,6 +259,7 @@ class RadarBluetoothService {
 
   Future<void> disconnect() async {
     stopDemo();
+    stopWifi();
     await _connection?.finish();
     _connection = null;
     _stateController.add(false);
@@ -173,6 +268,10 @@ class RadarBluetoothService {
   void sendLine(String command) {
     if (_demo) {
       _demoHandleCommand(command);
+      return;
+    }
+    if (_wifi) {
+      _wifiSend(command);
       return;
     }
     final conn = _connection;
@@ -190,6 +289,7 @@ class RadarBluetoothService {
 
   void dispose() {
     _demoTimer?.cancel();
+    _wifiTimer?.cancel();
     _lineController.close();
     _stateController.close();
     _rawController.close();
