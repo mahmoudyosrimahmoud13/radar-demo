@@ -41,7 +41,7 @@ class IntelHex {
       final payload = data.sublist(4, 4 + byteCount);
       final checksum = data[4 + byteCount];
 
-      final sum = (data[0] + data[1] + data[2] + data[3] + payload.fold(0, (a, b) => a + b)) & 0xFF;
+      final sum = (data[0] + data[1] + data[2] + data[3] + payload.fold<int>(0, (a, b) => a + b)) & 0xFF;
       final computedChecksum = (0x100 - sum) & 0xFF;
       if (computedChecksum != checksum) {
         throw IntelHexParseException('Bad checksum on line: $line');

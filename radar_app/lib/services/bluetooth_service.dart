@@ -72,7 +72,7 @@ class RadarBluetoothService {
   void sendRaw(List<int> bytes) {
     final conn = _connection;
     if (conn == null || !conn.isConnected) return;
-    conn.output.add(bytes);
+    conn.output.add(Uint8List.fromList(bytes));
   }
 
   void dispose() {
