@@ -123,6 +123,25 @@ jobs:
             echo "Patched $f"
           done
 
+      - name: Raise every plugin's compileSdk to at least 36
+        # Newer AndroidX/Flutter support libraries (e.g.
+        # flutter_plugin_android_lifecycle) refuse to be used by a plugin
+        # that compiles against an older Android API. Some plugins
+        # (file_picker, and our patched flutter_bluetooth_serial) hard-code
+        # 33/34/35. compileSdk only controls which Android APIs are visible
+        # at compile time -- it doesn't change minSdk (which phones can
+        # install the app) or targetSdk (runtime behavior), so raising it
+        # is safe. Plugins already on 36+, or using Flutter's own value,
+        # are left untouched.
+        run: |
+          shopt -s nullglob
+          for f in "$HOME/.pub-cache/hosted/pub.dev/"*/android/build.gradle "$HOME/.pub-cache/hosted/pub.dev/"*/android/build.gradle.kts; do
+            if grep -qE 'compileSdk(Version)?[[:space:]]*[=(]?[[:space:]]*(2[0-9]|3[0-5])\b' "$f"; then
+              sed -i -E 's/(compileSdk(Version)?[[:space:]]*[=(]?[[:space:]]*)(2[0-9]|3[0-5])\b/\136/' "$f"
+              echo "Raised compileSdk to 36 in $f"
+            fi
+          done
+
       - name: Analyze (non-blocking -- catches obvious issues without failing the build over lints)
         run: flutter analyze || true
 
