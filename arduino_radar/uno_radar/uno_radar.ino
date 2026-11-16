@@ -171,6 +171,12 @@ Config cfg;
 Servo radarServo;
 SoftwareSerial espSerial(ESP_RX_PIN, ESP_TX_PIN);
 
+// The optional ESP-01 WiFi add-on. Keep this FALSE unless an ESP-01 is
+// actually wired to D10/D11: SoftwareSerial pauses the Uno's interrupts
+// while it sends, which makes the servo jitter/buzz and garbles the
+// HC-05's Bluetooth data. With it off, nothing is sent on D10/D11 at all.
+const bool USE_ESP01 = false;
+
 int angle;
 int step_;
 String btLineBuffer = "";
@@ -191,7 +197,7 @@ void saveConfig() {
 
 void setup() {
   Serial.begin(115200);   // to HC-05 (and the Optiboot bootloader on reset)
-  espSerial.begin(9600);  // to ESP-01
+  if (USE_ESP01) espSerial.begin(9600);  // to ESP-01
 
   pinMode(AUTORESET_PIN, OUTPUT);
   digitalWrite(AUTORESET_PIN, HIGH);
@@ -317,7 +323,7 @@ void handleCommand(String line) {
   }
 
   if (line.startsWith("WIFI,")) {
-    espSerial.println(line); // ESP-01 sketch parses the same "WIFI,ssid,pass" line
+    if (USE_ESP01) espSerial.println(line); // ESP-01 sketch parses the same "WIFI,ssid,pass" line
     Serial.println("WIFI_FORWARDED");
     return;
   }
@@ -344,7 +350,7 @@ void pollBluetoothCommands() {
 // Anything the ESP-01 sends back (currently just its "NETSTATUS,..." line)
 // gets relayed straight to the HC-05 so the phone app sees it too.
 void pollEspMessages() {
-  while (espSerial.available()) {
+  while (USE_ESP01 && espSerial.available()) {
     char c = espSerial.read();
     if (c == '\n') {
       if (espLineBuffer.startsWith("NETSTATUS,")) {
@@ -372,7 +378,7 @@ void loop() {
 
   String line = "A," + String(angle) + ",D," + String(distance) + "," + (alert ? "ALERT" : "OK");
   Serial.println(line);     // -> HC-05 -> phone app
-  espSerial.println(line);  // -> ESP-01 -> web radar page
+  if (USE_ESP01) espSerial.println(line);  // -> ESP-01 -> web radar page
 
   if (alert && cfg.buzzerEnabled) tone(BUZZER_PIN, 2000); else noTone(BUZZER_PIN);
   digitalWrite(RELAY_PIN, (alert && cfg.relayEnabled) ? HIGH : LOW);
