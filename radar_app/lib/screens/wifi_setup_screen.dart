@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/network_status.dart';
 import '../services/bluetooth_service.dart';
+import '../services/web_share_service.dart';
 import '../theme/clay_theme.dart';
 import '../widgets/clay_container.dart';
 
@@ -28,6 +29,78 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
   String? _status;
   NetworkStatus? _network;
   bool _obscure = true;
+  bool _sharing = WebShareService.instance.isRunning;
+  List<String> _shareUrls = [];
+  String? _shareError;
+
+  Future<void> _toggleShare(bool on) async {
+    setState(() => _shareError = null);
+    try {
+      if (on) {
+        final urls = await WebShareService.instance.start(widget.bluetooth);
+        if (!mounted) return;
+        setState(() {
+          _sharing = true;
+          _shareUrls = urls;
+        });
+      } else {
+        await WebShareService.instance.stop();
+        if (!mounted) return;
+        setState(() {
+          _sharing = false;
+          _shareUrls = [];
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _shareError = 'Could not start sharing: $e');
+    }
+  }
+
+  Widget _shareCard() {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 20),
+      child: ClayContainer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.cast_connected, color: ClayColors.primary),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Share radar on WiFi',
+                      style: TextStyle(color: ClayColors.textPrimary, fontWeight: FontWeight.w700)),
+                ),
+                Switch(value: _sharing, onChanged: _toggleShare),
+              ],
+            ),
+            Text(
+              'No ESP-01 needed: this phone serves the live radar page. Open the address below '
+              'in any browser on the same WiFi. Keep this app open while sharing.',
+              style: TextStyle(color: ClayColors.textSecondary, fontSize: 12, height: 1.4),
+            ),
+            if (_sharing && _shareUrls.isEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Sharing, but no WiFi address found. Is the phone connected to WiFi?',
+                    style: TextStyle(color: ClayColors.warning)),
+              ),
+            for (final u in _shareUrls)
+              Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: SelectableText(u,
+                    style: TextStyle(color: ClayColors.primary, fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            if (_shareError != null)
+              Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(_shareError!, style: TextStyle(color: ClayColors.danger)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _send() {
     final ssid = _ssidCtrl.text.trim();
@@ -87,10 +160,10 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final net = _network;
-    return Padding(
+    return ListView(
       padding: EdgeInsets.all(20),
-      child: Column(
-        children: [
+      children: [
+          _shareCard(),
           if (net != null)
             Padding(
               padding: EdgeInsets.only(bottom: 20),
@@ -165,8 +238,7 @@ class _WifiSetupScreenState extends State<WifiSetupScreen> {
               padding: EdgeInsets.only(top: 16),
               child: Text(_status!, style: TextStyle(color: ClayColors.textSecondary), textAlign: TextAlign.center),
             ),
-        ],
-      ),
+      ],
     );
   }
 }

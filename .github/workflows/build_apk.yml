@@ -92,7 +92,8 @@ jobs:
             "android.permission.BLUETOOTH_CONNECT" \
             "android.permission.BLUETOOTH_SCAN" \
             "android.permission.ACCESS_FINE_LOCATION" \
-            "android.permission.POST_NOTIFICATIONS"; do
+            "android.permission.POST_NOTIFICATIONS" \
+            "android.permission.INTERNET"; do
             if ! grep -q "\"$PERM\"" "$MANIFEST"; then
               sed -i "0,/<application/s//<uses-permission android:name=\"$PERM\" \/>\n    <application/" "$MANIFEST"
             fi
