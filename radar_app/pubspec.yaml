@@ -1,5 +1,5 @@
 name: radar_app
-description: Companion app for the Arduino Bluetooth/WiFi radar project.
+description: EchoSweep -- companion app for the Arduino Bluetooth/WiFi radar.
 publish_to: "none"
 version: 1.0.0
 
@@ -18,6 +18,7 @@ dependencies:
   intl: ^0.19.0
   permission_handler: ^11.3.1        # runtime Bluetooth/location permissions on Android
   url_launcher: ^6.3.1                # opens the ESP-01's web radar page in a browser
+  shared_preferences: ^2.3.2          # remembers that the assembly guide was already shown
 
 dev_dependencies:
   flutter_test:

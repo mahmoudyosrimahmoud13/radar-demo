@@ -102,6 +102,15 @@ jobs:
           # instead of 3 minutes later deep inside Gradle.
           python3 -c "import xml.dom.minidom,sys; xml.dom.minidom.parse(sys.argv[1]); print('Manifest is valid XML')" "$MANIFEST"
 
+      - name: Apply the EchoSweep name and app icon
+        run: |
+          for d in branding/mipmap-*; do
+            mkdir -p "android/app/src/main/res/$(basename "$d")"
+            cp "$d/ic_launcher.png" "android/app/src/main/res/$(basename "$d")/ic_launcher.png"
+          done
+          sed -i 's/android:label="[^"]*"/android:label="EchoSweep"/' android/app/src/main/AndroidManifest.xml
+          grep -n 'android:label' android/app/src/main/AndroidManifest.xml
+
       - name: Install dependencies
         run: flutter pub get
 

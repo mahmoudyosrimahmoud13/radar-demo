@@ -14,7 +14,8 @@ import 'ota_screen.dart';
 /// Bottom-nav shell shown once Bluetooth is connected.
 class HomeShell extends StatefulWidget {
   final RadarBluetoothService bluetooth;
-  const HomeShell({super.key, required this.bluetooth});
+  final VoidCallback? onOpenGuide;
+  const HomeShell({super.key, required this.bluetooth, this.onOpenGuide});
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -26,7 +27,7 @@ class _HomeShellState extends State<HomeShell> {
   bool _connected = true;
   BatteryReading? _battery;
 
-  static const _titles = ['Radar', 'Events', 'Analytics', 'Settings', 'WiFi setup', 'Firmware update'];
+  static const _titles = ['Live radar', 'Events', 'Analytics', 'Settings', 'WiFi setup', 'Firmware update'];
 
   @override
   void initState() {
@@ -62,6 +63,12 @@ class _HomeShellState extends State<HomeShell> {
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: [
+          if (widget.onOpenGuide != null)
+            IconButton(
+              tooltip: 'Assembly guide',
+              icon: const Icon(Icons.menu_book_outlined),
+              onPressed: widget.onOpenGuide,
+            ),
           if (_battery != null)
             Padding(
               padding: const EdgeInsets.only(right: 8),
